@@ -5,10 +5,11 @@
 #include <string.h>
 #include <time.h>
 
-TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {}
+TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0)
+{
+}
 
-TGAImage::TGAImage(int w, int h, int bpp)
-    : data(NULL), width(w), height(h), bytespp(bpp)
+TGAImage::TGAImage(int w, int h, int bpp) : data(NULL), width(w), height(h), bytespp(bpp)
 {
     unsigned long nbytes = width * height * bytespp;
     data                 = new unsigned char[nbytes];
@@ -68,8 +69,7 @@ bool TGAImage::read_tga_file(const char *filename)
     width   = header.width;
     height  = header.height;
     bytespp = header.bitsperpixel >> 3;
-    if (width <= 0 || height <= 0 ||
-        (bytespp != GRAYSCALE && bytespp != RGB && bytespp != RGBA)) {
+    if (width <= 0 || height <= 0 || (bytespp != GRAYSCALE && bytespp != RGB && bytespp != RGBA)) {
         in.close();
         std::cerr << "bad bpp (or width/height) value\n";
         return false;
@@ -162,8 +162,7 @@ bool TGAImage::write_tga_file(const char *filename, bool rle)
 {
     unsigned char developer_area_ref[4] = {0, 0, 0, 0};
     unsigned char extension_area_ref[4] = {0, 0, 0, 0};
-    unsigned char footer[18]            = {'T', 'R', 'U', 'E', 'V', 'I', 'S', 'I', 'O',
-                                           'N', '-', 'X', 'F', 'I', 'L', 'E', '.', '\0'};
+    unsigned char footer[18]            = {'T', 'R', 'U', 'E', 'V', 'I', 'S', 'I', 'O', 'N', '-', 'X', 'F', 'I', 'L', 'E', '.', '\0'};
     std::ofstream out;
     out.open(filename, std::ios::binary);
     if (!out.is_open()) {
@@ -174,20 +173,18 @@ bool TGAImage::write_tga_file(const char *filename, bool rle)
 
     TGA_Header header;
     memset((void *)&header, 0, sizeof(header));
-    header.bitsperpixel = bytespp << 3;
-    header.width        = width;
-    header.height       = height;
-    header.datatypecode =
-        (bytespp == GRAYSCALE ? (rle ? 11 : 3) : (rle ? 10 : 2));
+    header.bitsperpixel    = bytespp << 3;
+    header.width           = width;
+    header.height          = height;
+    header.datatypecode    = (bytespp == GRAYSCALE ? (rle ? 11 : 3) : (rle ? 10 : 2));
     header.imagedescriptor = 0x20; // top-left origin
-
+                                   //
     out.write((char *)&header, sizeof(header));
     if (!out.good()) {
         out.close();
         std::cerr << "can't dump the tga file\n";
         return false;
     }
-
     if (!rle) {
         out.write((char *)data, width * height * bytespp);
         if (!out.good()) {
@@ -203,34 +200,29 @@ bool TGAImage::write_tga_file(const char *filename, bool rle)
             return false;
         }
     }
-
     out.write((char *)developer_area_ref, sizeof(developer_area_ref));
     if (!out.good()) {
         std::cerr << "can't dump the tga file\n";
         out.close();
         return false;
     }
-
     out.write((char *)extension_area_ref, sizeof(extension_area_ref));
     if (!out.good()) {
         std::cerr << "can't dump the tga file\n";
         out.close();
         return false;
     }
-
     out.write((char *)footer, sizeof(footer));
     if (!out.good()) {
         std::cerr << "can't dump the tga file\n";
         out.close();
         return false;
     }
-
     out.close();
     return true;
 }
 
-// TODO: it is not necessary to break a raw chunk for two equal pixels (for the
-// matter of the resulting size)
+// TODO: it is not necessary to break a raw chunk for two equal pixels (for the matter of the resulting size)
 bool TGAImage::unload_rle_data(std::ofstream &out)
 {
     const unsigned char max_chunk_length = 128;
@@ -265,8 +257,7 @@ bool TGAImage::unload_rle_data(std::ofstream &out)
             std::cerr << "can't dump the tga file\n";
             return false;
         }
-        out.write((char *)(data + chunkstart),
-                  (raw ? run_length * bytespp : bytespp));
+        out.write((char *)(data + chunkstart), (raw ? run_length * bytespp : bytespp));
         if (!out.good()) {
             std::cerr << "can't dump the tga file\n";
             return false;
@@ -292,11 +283,20 @@ bool TGAImage::set(int x, int y, TGAColor c)
     return true;
 }
 
-int TGAImage::get_bytespp() { return bytespp; }
+int TGAImage::get_bytespp()
+{
+    return bytespp;
+}
 
-int TGAImage::get_width() { return width; }
+int TGAImage::get_width()
+{
+    return width;
+}
 
-int TGAImage::get_height() { return height; }
+int TGAImage::get_height()
+{
+    return height;
+}
 
 bool TGAImage::flip_horizontally()
 {
@@ -332,9 +332,15 @@ bool TGAImage::flip_vertically()
     return true;
 }
 
-unsigned char *TGAImage::buffer() { return data; }
+unsigned char *TGAImage::buffer()
+{
+    return data;
+}
 
-void TGAImage::clear() { memset((void *)data, 0, width * height * bytespp); }
+void TGAImage::clear()
+{
+    memset((void *)data, 0, width * height * bytespp);
+}
 
 bool TGAImage::scale(int w, int h)
 {

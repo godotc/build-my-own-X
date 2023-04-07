@@ -42,6 +42,6 @@ func handleWriteBlockchain(ctx *gin.Context) {
 		})
 	}
 
-	ctx.JSON(http.StatusCreated, newBlock)
+	ctx.JSON(http.StatusCreated, *newBlock)
 
 }

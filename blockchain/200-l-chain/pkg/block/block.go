@@ -4,7 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
+
+var Blockchain []Block
 
 type Block struct {
 	Index     int
@@ -14,8 +18,22 @@ type Block struct {
 	PrevHash  string
 }
 
+func init() {
+	t := time.Now()
+	genesisBlock := Block{
+		Index:     0,
+		Timestamp: t.String(),
+		BPM:       0,
+		Hash:      "",
+		PrevHash:  "",
+	}
+
+	spew.Dump(genesisBlock)
+	Blockchain = append(Blockchain, genesisBlock)
+}
+
 func calculateHash(block Block) string {
-	record := string(block.Index) + block.Timestamp + string(block.BPM) + block.PrevHash
+	record := string(rune(block.Index)) + block.Timestamp + string(rune(block.BPM)) + block.PrevHash
 	h := sha256.New()
 	h.Write([]byte(record))
 

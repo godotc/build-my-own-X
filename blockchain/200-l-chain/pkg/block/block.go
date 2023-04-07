@@ -3,12 +3,14 @@ package block
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 )
 
 var Blockchain []Block
+var once sync.Once
 
 type Block struct {
 	Index     int
@@ -19,17 +21,19 @@ type Block struct {
 }
 
 func init() {
-	t := time.Now()
-	genesisBlock := Block{
-		Index:     0,
-		Timestamp: t.String(),
-		BPM:       0,
-		Hash:      "",
-		PrevHash:  "",
-	}
+	once.Do(func() {
+		t := time.Now()
+		genesisBlock := Block{
+			Index:     0,
+			Timestamp: t.String(),
+			BPM:       0,
+			Hash:      "",
+			PrevHash:  "",
+		}
 
-	spew.Dump(genesisBlock)
-	Blockchain = append(Blockchain, genesisBlock)
+		spew.Dump(genesisBlock)
+		Blockchain = append(Blockchain, genesisBlock)
+	})
 }
 
 func calculateHash(block Block) string {
@@ -65,8 +69,20 @@ func isBlockValid(newBlock, oldBlock Block) bool {
 	return true
 }
 
-func replaceChain(oldBlocks, newBLocks []Block) {
+func replaceChain(newBLocks []Block) {
+	if len(newBLocks) > len(Blockchain) {
+		Blockchain = newBLocks
+	}
+}
+
+// wrong fuction, pass by value cannot replace global `Blockchain`
+func replaceChain_pass_by_value(oldBlocks, newBLocks []Block) {
 	if len(newBLocks) > len(oldBlocks) {
 		oldBlocks = newBLocks
+	}
+}
+func replaceChain_pass_by_ptr(oldBlocks, newBLocks *[]Block) {
+	if len(*newBLocks) > len(*oldBlocks) {
+		*oldBlocks = *newBLocks
 	}
 }

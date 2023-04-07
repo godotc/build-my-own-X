@@ -1,6 +1,7 @@
-package block
+package serverx
 
 import (
+	"chain/pkg/block"
 	"log"
 	"net/http"
 	"os"
@@ -10,11 +11,15 @@ import (
 )
 
 type Server struct {
-	gin *gin.Engine
+	gin      *gin.Engine
+	bcServer chan []block.Block
 }
 
 func NewServer() *Server {
-	return &Server{gin: gin.Default()}
+	return &Server{
+		gin:      gin.Default(),
+		bcServer: make(chan []block.Block),
+	}
 }
 
 func (s *Server) Run() error {

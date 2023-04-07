@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-var Blockchain []Block
-
 type Block struct {
 	Index     int
 	Timestamp string
@@ -40,15 +38,17 @@ func generateBlock(oldBlock Block, BPM int) (Block, error) {
 }
 
 func isBlockValid(newBlock, oldBlock Block) bool {
-	if oldBlock.Index+1 != newBlock.Index || oldBlock.Hash != newBlock.PrevHash || calculateHash(newBlock) != newBlock.Hash {
+	if oldBlock.Index+1 != newBlock.Index ||
+		oldBlock.Hash != newBlock.PrevHash ||
+		calculateHash(newBlock) != newBlock.Hash {
 		return false
 	}
 
 	return true
 }
 
-func replaceChain(newBLocks []Block) {
-	if len(newBLocks) > len(Blockchain) {
-		Blockchain = newBLocks
+func replaceChain(oldBlocks, newBLocks []Block) {
+	if len(newBLocks) > len(oldBlocks) {
+		oldBlocks = newBLocks
 	}
 }

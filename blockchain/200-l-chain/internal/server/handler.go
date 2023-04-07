@@ -1,6 +1,7 @@
-package block
+package serverx
 
 import (
+	"chain/pkg/block"
 	"encoding/json"
 	"net/http"
 
@@ -10,7 +11,7 @@ import (
 
 func handleGetBlockchain(ctx *gin.Context) {
 	println("get")
-	bytes, err := json.MarshalIndent(Blockchain, "", "  ")
+	bytes, err := json.MarshalIndent(block.Blockchain, "", "  ")
 	if err != nil {
 		ctx.JSON(400, gin.H{"msg": err})
 		return
@@ -28,6 +29,7 @@ func handleWriteBlockchain(ctx *gin.Context) {
 	var m Message
 
 	decoder := json.NewDecoder(ctx.Request.Body)
+
 	if err := decoder.Decode(&m); err != nil {
 		ctx.JSON(400, gin.H{
 			"body": ctx.Request.Body,
@@ -35,7 +37,7 @@ func handleWriteBlockchain(ctx *gin.Context) {
 		return
 	}
 
-	newBlock, err := generateBlock(Blockchain[len(Blockchain)-1], m.BPM)
+	newBlock, err := generateBlock(block.Blockchain[len(block.Blockchain)-1], m.BPM)
 	if err != nil {
 		ctx.JSON(400, gin.H{
 			"msg": m,
@@ -50,5 +52,4 @@ func handleWriteBlockchain(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, newBlock)
-
 }

@@ -1,0 +1,31 @@
+[
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-I", "/home/nono/.xmake/packages/g/gtest/1.12.1/77b9096bc4b34d9282f672d36b015ba9/include", "-o", "build/.objs/ts/linux/x86_64/debug/test/main.cc.o", "test/main.cc"],
+  "file": "test/main.cc"
+},
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-o", "build/.objs/db/linux/x86_64/debug/src/cursor.cc.o", "src/cursor.cc"],
+  "file": "src/cursor.cc"
+},
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-o", "build/.objs/db/linux/x86_64/debug/src/paper.cc.o", "src/paper.cc"],
+  "file": "src/paper.cc"
+},
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-o", "build/.objs/db/linux/x86_64/debug/src/main.cc.o", "src/main.cc"],
+  "file": "src/main.cc"
+},
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-o", "build/.objs/db/linux/x86_64/debug/src/meta_command.cc.o", "src/meta_command.cc"],
+  "file": "src/meta_command.cc"
+},
+{
+  "directory": "/home/nono/tmp/build-my-own-X/db/sqlitoy",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-std=c++20", "-o", "build/.objs/db/linux/x86_64/debug/src/statement.cc.o", "src/statement.cc"],
+  "file": "src/statement.cc"
+}]

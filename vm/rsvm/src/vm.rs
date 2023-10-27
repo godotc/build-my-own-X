@@ -1,11 +1,10 @@
-use std::result;
-
 use crate::instruction::Opcode;
 
 #[derive(Debug)]
 pub struct VM {
     registers: [i32; 32],
-    pc: usize, // program counter
+    pc: usize,
+    // program counter
     program: Vec<u8>,
     remainder: u32,
 }
@@ -27,9 +26,13 @@ impl VM {
         }
     }
 
+    pub fn run_once(&mut self) {
+        self.execute_instructions();
+    }
+
     fn execute_instructions(&mut self) -> bool {
         if self.pc >= self.program.len() {
-            return false;
+            return true;
         }
 
         match self.decode_opcode() {
@@ -38,6 +41,7 @@ impl VM {
                 let number = self.next_16_bits() as u16;
                 self.registers[register] = number as i32;
             }
+
             Opcode::ADD => {
                 let (reg1, reg2) = self.binary_operaters_value();
                 self.registers[self.next_8_bits() as usize] = reg1 + reg2;
@@ -56,21 +60,33 @@ impl VM {
                 self.remainder = (reg1 % reg2) as u32;
             }
 
+            Opcode::JMPB => {
+                let target = self.registers[self.next_8_bits() as usize];
+                self.pc -= target as usize;
+            }
             Opcode::JMP => {
                 let target = self.registers[self.next_8_bits() as usize];
                 self.pc = target as usize;
             }
+            Opcode::JMPF => {
+                println!("jump-------------f");
+                let target = self.registers[self.next_8_bits() as usize];
+                self.pc += target as usize;
+            }
 
             Opcode::HLT => {
                 println!("HLT encountered");
-                return false;
+                return true;
             }
             _ => {
-                println!("Unrecognized opcde found! Terminating!");
-                return false;
+                println!(
+                    "Unrecognized opcode: {} found! Terminating!",
+                    self.program[self.pc]
+                );
+                return true;
             }
         }
-        true
+        false
     }
 
     fn decode_opcode(&mut self) -> Opcode {
@@ -100,6 +116,10 @@ impl VM {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
+    use crate::instruction::Instruction;
+
     use super::*;
 
     #[test]
@@ -113,7 +133,7 @@ mod tests {
     #[test]
     fn test_opcode_hlt() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![0, 0, 0, 0];
+        let test_bytes = vec![99, 0, 0, 0];
         test_vm.program = test_bytes;
         test_vm.run();
         assert_eq!(test_vm.pc, 1);
@@ -122,7 +142,7 @@ mod tests {
     #[test]
     fn test_opcode_ilg() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![200, 0, 0, 0];
+        let test_bytes = vec![Opcode::IGL.into(), 0, 0, 0];
         test_vm.program = test_bytes;
         test_vm.run();
         assert_eq!(test_vm.pc, 1);
@@ -131,9 +151,27 @@ mod tests {
     #[test]
     fn test_opcode_load() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![0, 0, 1, 244]; // 500 in little endian
-        test_vm.program = test_bytes;
+        test_vm.program = vec![0, 0, 1, 244];
         test_vm.run();
         assert_eq!(test_vm.registers[0], 500);
+    }
+
+    #[test]
+    fn test_opcode_jmp() {
+        let mut test_vm = VM::new();
+        test_vm.program = vec![80, 0, 0, 0];
+        test_vm.registers[0] = 1;
+        test_vm.run_once();
+        assert_eq!(test_vm.pc, 1);
+    }
+
+    #[test]
+    fn test_opcode_jmp_relatively() {
+        let mut vm = VM::new();
+        vm.registers[0] = 2;
+        vm.program = vec![Opcode::JMPF.into(), 0, 0, 0, 6, 0, 0, 0];
+        println!("{:?}", vm.program);
+        vm.run_once();
+        assert_eq!(vm.pc, 4);
     }
 }

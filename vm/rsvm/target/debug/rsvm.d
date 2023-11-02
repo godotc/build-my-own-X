@@ -1,1 +1,0 @@
-/home/nono/tmp/build-my-own-X/vm/rsvm/target/debug/rsvm: /home/nono/tmp/build-my-own-X/vm/rsvm/src/lib.rs /home/nono/tmp/build-my-own-X/vm/rsvm/src/main.rs /home/nono/tmp/build-my-own-X/vm/rsvm/src/vm.rs

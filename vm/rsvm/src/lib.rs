@@ -1,2 +1,3 @@
-pub mod instruction;
-pub mod vm;
+mod instruction;
+pub mod repl;
+mod vm;

@@ -1,12 +1,14 @@
+use std::thread::sleep;
+
 use crate::instruction::Opcode;
 
 #[derive(Debug)]
 pub struct VM {
-    registers: [i32; 32],
-    pc: usize,
-    // program counter
-    program: Vec<u8>,
-    remainder: u32,
+    pub registers: [i32; 32],
+    pub pc: usize, // program counter
+    pub program: Vec<u8>,
+    pub remainder: u32,   // divide int left
+    pub equal_flag: bool, // the result of last comparison op
 }
 
 impl VM {
@@ -16,6 +18,7 @@ impl VM {
             pc: 0,
             program: vec![],
             remainder: 0,
+            equal_flag: false,
         }
     }
 
@@ -28,6 +31,10 @@ impl VM {
 
     pub fn run_once(&mut self) {
         self.execute_instructions();
+    }
+
+    pub fn add_byte(&mut self, b: u8) {
+        self.program.push(b);
     }
 
     fn execute_instructions(&mut self) -> bool {
@@ -60,6 +67,51 @@ impl VM {
                 self.remainder = (reg1 % reg2) as u32;
             }
 
+            Opcode::EQ => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 == reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::NEQ => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 != reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::GT => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 > reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::LT => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 < reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::GTQ => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 >= reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::LTQ => {
+                let (reg1, reg2) = self.binary_operaters_value();
+                self.equal_flag = if reg1 <= reg2 { true } else { false };
+                self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
+            }
+            Opcode::JEQ => {
+                let reg = self.next_8_bits() as usize;
+                let target = self.registers[reg];
+                if self.equal_flag {
+                    self.pc = target as usize;
+                }
+            }
+            Opcode::JNEQ => {
+                let reg = self.next_8_bits() as usize;
+                let target = self.registers[reg];
+                if !self.equal_flag {
+                    self.pc = target as usize;
+                }
+            }
+
             Opcode::JMPB => {
                 let target = self.registers[self.next_8_bits() as usize];
                 self.pc -= target as usize;
@@ -69,7 +121,7 @@ impl VM {
                 self.pc = target as usize;
             }
             Opcode::JMPF => {
-                println!("jump-------------f");
+                println!("jumpf");
                 let target = self.registers[self.next_8_bits() as usize];
                 self.pc += target as usize;
             }
@@ -78,6 +130,7 @@ impl VM {
                 println!("HLT encountered");
                 return true;
             }
+
             _ => {
                 println!(
                     "Unrecognized opcode: {} found! Terminating!",
@@ -116,11 +169,8 @@ impl VM {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::instruction::Instruction;
-
     use super::*;
+    use std::vec;
 
     #[test]
     fn test_create_vm() {
@@ -166,12 +216,49 @@ mod tests {
     }
 
     #[test]
+    fn test_opcode_eq() {
+        let mut test_vm = VM::new();
+        test_vm.registers[0] = 10;
+        test_vm.registers[1] = 10;
+        test_vm.program = vec![Opcode::EQ.into(), 0, 1, 255];
+        test_vm.run_once();
+        assert_eq!(test_vm.equal_flag, true);
+
+        test_vm.pc = 0;
+        test_vm.registers[1] = 20;
+        test_vm.run_once();
+        assert_eq!(test_vm.equal_flag, false);
+    }
+
+    #[test]
+    fn test_opcode_jeq() {
+        let mut test_vm = VM::new();
+        test_vm.registers[0] = 7;
+        test_vm.equal_flag = true;
+        test_vm.program = vec![Opcode::JEQ.into(), 0, 0, 0, 17, 0, 0, 0, 17, 0, 0, 0];
+        test_vm.run_once();
+        assert_eq!(test_vm.pc, 7);
+    }
+
+    #[test]
     fn test_opcode_jmp_relatively() {
-        let mut vm = VM::new();
-        vm.registers[0] = 2;
-        vm.program = vec![Opcode::JMPF.into(), 0, 0, 0, 6, 0, 0, 0];
-        println!("{:?}", vm.program);
-        vm.run_once();
-        assert_eq!(vm.pc, 4);
+        {
+            let mut vm = VM::new();
+            vm.registers[0] = 2;
+
+            vm.program = vec![Opcode::JMPF.into(), 0, 0, 0, 6, 0, 0, 0];
+            vm.run_once();
+            assert_eq!(vm.pc, 4);
+        }
+        {
+            let mut vm = VM::new();
+            vm.registers[0] = 5;
+            vm.pc = 3;
+
+            // 3 +1 +1 -5=   0
+            vm.program = vec![0, 1, 2, Opcode::JMPB.into(), 0, 5, 6, 7];
+            vm.run_once();
+            assert_eq!(vm.pc, 0);
+        }
     }
 }

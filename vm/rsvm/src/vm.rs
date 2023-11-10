@@ -1,5 +1,3 @@
-use std::thread::sleep;
-
 use crate::instruction::Opcode;
 
 #[derive(Debug)]

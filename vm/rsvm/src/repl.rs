@@ -1,5 +1,4 @@
 use std::{
-    hash::BuildHasher,
     io::{self, Write},
     num::ParseIntError,
 };
@@ -85,6 +84,7 @@ impl REPL {
      * @return vec<u8>
      * examle a load command： 00 01 03 E8 // LOAD $1  0x03e8 or 0xe803?
      */
+    ///
     fn parse_hex(&mut self, i: &str) -> Result<Vec<u8>, ParseIntError> {
         let split = i.split(" ").collect::<Vec<&str>>();
         let mut results = vec![];

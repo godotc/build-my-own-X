@@ -8,4 +8,5 @@ edition = "2021"
 opt-level = 1
 
 [dependencies]
+nom = "^4.0.0"
 

@@ -1,7 +1,7 @@
 use super::Token;
 use nom::{digit, types::CompleteStr};
 
-named!(register < CompleteStr, Token>,
+named!(pub register < CompleteStr, Token>,
     ws!(  // clear all white space
         do_parse!(
             tag!("$") >>

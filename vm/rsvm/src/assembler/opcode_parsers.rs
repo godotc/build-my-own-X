@@ -3,7 +3,7 @@ use nom::types::CompleteStr;
 
 use super::Token;
 
-named!(opcode_load < CompleteStr, Token> ,
+named!(pub opcode_load < CompleteStr, Token> ,
     do_parse!(
         tag!("load") >> (Token::Op { code: Opcode::LOAD })
     )

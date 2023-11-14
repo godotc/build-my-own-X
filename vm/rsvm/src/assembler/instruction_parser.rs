@@ -14,9 +14,11 @@ pub struct AssemblerInstruction {
     operand3: Option<Token>,
 }
 
+// I don't know why this, but it did compile succuess
+
 /// Handles instructions of the following form:
 /// LOAD $0 #100
-named!(pub instruction_one<CompleteStr, AssemblerInstruction>,
+named!(pub instruction_one<CompleteStr, AssemblerInstruction >,
     do_parse!(
         o: opcode_load >>
         r: register >>
@@ -32,6 +34,50 @@ named!(pub instruction_one<CompleteStr, AssemblerInstruction>,
         )
     )
 );
+
+impl AssemblerInstruction {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut ret = vec![];
+        match self.opcode {
+            Token::Op { code } => match code {
+                _ => {
+                    ret.push(code as u8);
+                }
+            },
+            _ => {
+                println!("Non-opcode found in opcode field! ");
+                std::process::exit(1);
+            }
+        }
+
+        for operand in vec![&self.operand1, &self.operand2, &self.operand3] {
+            match operand {
+                Some(t) => AssemblerInstruction::extract_operant(t, &mut ret),
+                None => {}
+            }
+        }
+        ret
+    }
+
+    pub fn extract_operant(token: &Token, ret: &mut Vec<u8>) {
+        match token {
+            Token::Register { reg_num } => {
+                ret.push(*reg_num);
+            }
+            Token::IntegerOperand { value } => {
+                let raw = *value as u16;
+                let byte1 = raw; // low
+                let byte2 = raw >> 8; // high
+                ret.push(byte2 as u8);
+                ret.push(byte1 as u8);
+            }
+            _ => {
+                println!("Opcode found in operand field");
+                std::process::exit(1);
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

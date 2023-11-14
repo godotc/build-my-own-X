@@ -16,6 +16,7 @@ named!(pub integer_operand < CompleteStr, Token>,
     )
 );
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

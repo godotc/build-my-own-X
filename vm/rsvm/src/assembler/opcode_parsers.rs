@@ -9,6 +9,7 @@ named!(pub opcode_load < CompleteStr, Token> ,
     )
 );
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

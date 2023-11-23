@@ -17,12 +17,15 @@ named!(pub register < CompleteStr, Token>,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::register;
+    use crate::assembler::Token;
+    use nom::types::CompleteStr;
 
     #[test]
     fn test_parse_register() {
         let result = register(CompleteStr("$0"));
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
+
         match result.unwrap().1 {
             Token::Register { reg_num } => assert_eq!(reg_num, 0.into()),
             _ => assert!(false),

@@ -1,12 +1,10 @@
 use crate::instruction::Opcode;
 
-mod opcode;
-
+pub mod instruction_parser;
 pub mod opcode_parsers;
 pub mod operand_parsers;
-pub mod register_parsers;
-pub mod instruction_parser;
 pub mod program_parser;
+pub mod register_parsers;
 
 #[derive(PartialEq, Debug)]
 pub enum Token {

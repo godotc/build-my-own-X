@@ -1,36 +1,64 @@
+use nom::alt;
+use nom::multispace;
 use nom::types::CompleteStr;
 
-use super::opcode_parsers::opcode_load;
+use super::opcode_parsers::opcode;
 use super::operand_parsers::integer_operand;
 use super::register_parsers::register;
 use super::Token;
 
 #[derive(Debug, PartialEq)]
 pub struct AssemblerInstruction {
-    label: Option<String>,
     opcode: Token,
     operand1: Option<Token>,
     operand2: Option<Token>,
     operand3: Option<Token>,
 }
 
+named!(pub instruction<CompleteStr,AssemblerInstruction>,
+    do_parse!(
+        ins: alt!(
+            instruction_one|
+            instruction_two
+        ) >>
+        (
+            ins
+        )
+    )
+);
+
 // I don't know why this, but it did compile succuess
 
 /// Handles instructions of the following form:
-/// LOAD $0 #100
-named!(pub instruction_one<CompleteStr, AssemblerInstruction >,
+// LOAD $0 #100
+named!(instruction_one<CompleteStr, AssemblerInstruction >,
     do_parse!(
-        o: opcode_load >>
+        o: opcode >>
         r: register >>
         i: integer_operand >>
         (
             AssemblerInstruction{
-                label: None,
                 opcode: o,
                 operand1: Some(r),
                 operand2: Some(i),
                 operand3:None ,
             }
+        )
+    )
+);
+
+named!(instruction_two<CompleteStr,AssemblerInstruction>,
+    do_parse!(
+        o: opcode >>
+        opt!(multispace)>>
+        (
+            AssemblerInstruction{
+                opcode: o,
+                operand1: None,
+                operand2: None,
+                operand3: None,
+            }
+
         )
     )
 );
@@ -50,16 +78,15 @@ impl AssemblerInstruction {
             }
         }
 
-        for operand in vec![&self.operand1, &self.operand2, &self.operand3] {
-            match operand {
-                Some(t) => AssemblerInstruction::extract_operant(t, &mut ret),
-                None => {}
+        for operand in &[&self.operand1, &self.operand2, &self.operand3] {
+            if let Some(token) = operand {
+                AssemblerInstruction::extract_operand(token, &mut ret);
             }
         }
         ret
     }
 
-    pub fn extract_operant(token: &Token, ret: &mut Vec<u8>) {
+    pub fn extract_operand(token: &Token, ret: &mut Vec<u8>) {
         match token {
             Token::Register { reg_num } => {
                 ret.push(*reg_num);
@@ -86,18 +113,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_instruction_form_one() {
+    fn test_parse_instruction_from_one() {
         let result = instruction_one(CompleteStr("load $0 #100\n"));
         assert_eq!(
             result,
             Ok((
                 CompleteStr(""),
                 AssemblerInstruction {
-                    label: None,
                     opcode: Token::Op { code: Opcode::LOAD },
                     operand1: Some(Token::Register { reg_num: 0 }),
                     operand2: Some(Token::IntegerOperand { value: 100 }),
                     operand3: None
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_parse_instruction_from_two() {
+        let result = instruction_two("hlt\n".into());
+        assert_eq!(
+            result,
+            Ok((
+                CompleteStr(""),
+                AssemblerInstruction {
+                    opcode: Token::Op { code: Opcode::HLT },
+                    operand1: None,
+                    operand2: None,
+                    operand3: None,
                 }
             ))
         );

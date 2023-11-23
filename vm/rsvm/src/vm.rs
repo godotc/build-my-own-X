@@ -85,12 +85,12 @@ impl VM {
                 self.equal_flag = if reg1 < reg2 { true } else { false };
                 self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
             }
-            Opcode::GTQ => {
+            Opcode::GTE => {
                 let (reg1, reg2) = self.binary_operaters_value();
                 self.equal_flag = if reg1 >= reg2 { true } else { false };
                 self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag
             }
-            Opcode::LTQ => {
+            Opcode::LTE => {
                 let (reg1, reg2) = self.binary_operaters_value();
                 self.equal_flag = if reg1 <= reg2 { true } else { false };
                 self.next_8_bits(); // eat it for mips or other isc write into register , we use the self.equal_flag

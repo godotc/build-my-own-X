@@ -1,3 +1,5 @@
+use nom::types::CompleteStr;
+
 #[repr(u8)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Opcode {
@@ -12,8 +14,9 @@ pub enum Opcode {
     NEQ = 21,
     GT = 22,
     LT = 23,
-    GTQ = 24,
-    LTQ = 25,
+    GTE = 24,
+    LTE = 25,
+
     JEQ = 26,
     JNEQ = 27,
 
@@ -21,6 +24,7 @@ pub enum Opcode {
     JMP = 80,
     JMPF = 81,
 
+    NOP = 98,
     HLT = 99,
 
     IGL, // illegal
@@ -50,8 +54,9 @@ impl From<u8> for Opcode {
             21 => Self::NEQ,
             22 => Self::GT,
             23 => Self::LT,
-            24 => Self::GTQ,
-            25 => Self::LTQ,
+            24 => Self::GTE,
+            25 => Self::LTE,
+
             26 => Self::JEQ,
             27 => Self::JNEQ,
 
@@ -62,6 +67,37 @@ impl From<u8> for Opcode {
             99 => Self::HLT,
 
             _ => Self::IGL,
+        }
+    }
+}
+
+impl<'a> From<CompleteStr<'a>> for Opcode {
+    fn from(value: CompleteStr<'a>) -> Self {
+        match value {
+            CompleteStr("load") => Opcode::LOAD,
+
+            CompleteStr("add") => Opcode::ADD,
+            CompleteStr("sub") => Opcode::SUB,
+            CompleteStr("mul") => Opcode::MUL,
+            CompleteStr("div") => Opcode::DIV,
+
+            CompleteStr("eq") => Opcode::EQ,
+            CompleteStr("neq") => Opcode::NEQ,
+            CompleteStr("gte") => Opcode::GTE,
+            CompleteStr("gt") => Opcode::GT,
+            CompleteStr("lte") => Opcode::LTE,
+            CompleteStr("lt") => Opcode::LT,
+
+            CompleteStr("hlt") => Opcode::HLT,
+            CompleteStr("jmp") => Opcode::JMP,
+            CompleteStr("jmpf") => Opcode::JMPF,
+            CompleteStr("jmpb") => Opcode::JMPB,
+
+            CompleteStr("jeq") => Opcode::JEQ,
+            CompleteStr("jneq") => Opcode::JNEQ,
+            CompleteStr("nop") => Opcode::NOP,
+
+            _ => Opcode::IGL,
         }
     }
 }
@@ -95,5 +131,13 @@ mod tests {
         let b = a.try_into().unwrap_or(Opcode::IGL);
 
         assert_eq!(b, IGL);
+    }
+
+    #[test]
+    fn test_str_to_opcode() {
+        let opcode = Opcode::from(CompleteStr("load"));
+        assert_eq!(opcode, Opcode::LOAD);
+        let opcode = Opcode::from(CompleteStr("illegal"));
+        assert_eq!(opcode, Opcode::IGL);
     }
 }

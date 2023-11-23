@@ -58,35 +58,15 @@ impl REPL {
                     println!("End of Register Listing");
                 }
                 _ => {
-                    let parsed_program = program(nom::types::CompleteStr(buffer));
-                    if !parsed_program.is_ok() {
-                        println!("Unable to parse input");
-                        continue;
-                    }
-                    let (_, result) = parsed_program.unwrap();
-                    let bytecode = result.to_bytes();
-                    // TODO: Make a function to let us add bytes to the VM
-                    for byte in bytecode {
-                        self.vm.add_byte(byte);
-                    }
+                    let program = match program(nom::types::CompleteStr(buffer)) {
+                        Ok((_, program)) => program,
+                        Err(_) => {
+                            println!("Unable to  parse input");
+                            continue;
+                        }
+                    };
+                    self.vm.program.append(&mut program.to_bytes());
                     self.vm.run_once();
-
-                    // let result = self.parse_hex(buffer);
-                    // match result {
-                    //     Ok(bytes) => {
-                    //         for b in bytes {
-                    //             self.vm.add_byte(b);
-                    //         }
-                    //     }
-                    //     Err(e) => {
-                    //         println!(
-                    //             r"Unable to decode hex string , please enter  4 groups of 2 hex Characters
-                    //             Samle:: 00 01 03 E8"
-                    //         );
-                    //         println!("{}", e.to_string());
-                    //     }
-                    // };
-                    // self.vm.run_once();
                 }
             }
         }
@@ -98,6 +78,7 @@ impl REPL {
      * examle a load command： 00 01 03 E8 // LOAD $1  0x03e8 or 0xe803?
      */
     ///
+    #[allow(dead_code)]
     fn parse_hex(&mut self, i: &str) -> Result<Vec<u8>, ParseIntError> {
         let split = i.split(" ").collect::<Vec<&str>>();
         let mut results = vec![];

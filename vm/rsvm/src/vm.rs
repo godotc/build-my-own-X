@@ -3,10 +3,12 @@ use crate::instruction::Opcode;
 #[derive(Debug)]
 pub struct VM {
     pub registers: [i32; 32],
-    pub pc: usize, // program counter
+    pc: usize, // program counter
     pub program: Vec<u8>,
-    pub remainder: u32,   // divide int left
-    pub equal_flag: bool, // the result of last comparison op
+    heap: Vec<u8>,
+
+    remainder: u32,   //  int left after divide
+    equal_flag: bool, // the result of last comparison op
 }
 
 impl VM {
@@ -15,6 +17,7 @@ impl VM {
             registers: [0; 32],
             pc: 0,
             program: vec![],
+            heap: vec![],
             remainder: 0,
             equal_flag: false,
         }
@@ -122,6 +125,13 @@ impl VM {
                 println!("jumpf");
                 let target = self.registers[self.next_8_bits() as usize];
                 self.pc += target as usize;
+            }
+
+            Opcode::ALOC => {
+                let reg = self.next_8_bits() as usize;
+                let num_bytes = self.registers[reg];
+                let new_heap_size = self.heap.len() as i32 + num_bytes;
+                self.heap.resize(new_heap_size as usize, 0);
             }
 
             Opcode::HLT => {
@@ -258,5 +268,14 @@ mod tests {
             vm.run_once();
             assert_eq!(vm.pc, 0);
         }
+    }
+
+    #[test]
+    fn test_opcode_aloc() {
+        let mut vm = VM::new();
+        vm.registers[0] = 1024;
+        vm.program = vec![Opcode::ALOC.into(), 0, 0, 0];
+        vm.run_once();
+        assert_eq!(vm.heap.len(), 1024);
     }
 }

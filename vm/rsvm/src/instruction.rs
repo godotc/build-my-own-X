@@ -25,7 +25,10 @@ pub enum Opcode {
     JMPF = 81,
 
     NOP = 98,
-    HLT = 99,
+
+    ALOC = 100,
+
+    HLT = 254,
 
     IGL, // illegal
 }
@@ -64,7 +67,9 @@ impl From<u8> for Opcode {
             80 => Self::JMP,
             81 => Self::JMPF,
 
-            99 => Self::HLT,
+            100 => Self::ALOC,
+
+            254 => Self::HLT,
 
             _ => Self::IGL,
         }
@@ -88,7 +93,6 @@ impl<'a> From<CompleteStr<'a>> for Opcode {
             CompleteStr("lte") => Opcode::LTE,
             CompleteStr("lt") => Opcode::LT,
 
-            CompleteStr("hlt") => Opcode::HLT,
             CompleteStr("jmp") => Opcode::JMP,
             CompleteStr("jmpf") => Opcode::JMPF,
             CompleteStr("jmpb") => Opcode::JMPB,
@@ -96,6 +100,10 @@ impl<'a> From<CompleteStr<'a>> for Opcode {
             CompleteStr("jeq") => Opcode::JEQ,
             CompleteStr("jneq") => Opcode::JNEQ,
             CompleteStr("nop") => Opcode::NOP,
+
+            CompleteStr("aloc") => Opcode::ALOC,
+
+            CompleteStr("hlt") => Opcode::HLT,
 
             _ => Opcode::IGL,
         }

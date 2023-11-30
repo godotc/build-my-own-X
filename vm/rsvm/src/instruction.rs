@@ -49,15 +49,47 @@ macro_rules! declare_opcodes {
 
     };
 }
+// declare_opcodes!( (LOAD, 0))
+// #[derive(Debug, PartialEq, Clone, Copy)]
+// pub enum Opcode {
+//     LOAD,
+//     IGL,
+// }
+// impl Into<u8> for Opcode {
+//     fn into(self) -> u8 {
+//         match self {
+//             Self::LOAD => 0,
+//             _ => 255,
+//         }
+//     }
+// }
+// impl From<u8> for Opcode {
+//     fn from(value: u8) -> Self {
+//         match value {
+//             0 => Self::LOAD,
+//             _ => Self::IGL,
+//         }
+//     }
+// }
+// impl<'a> From<CompleteStr<'a>> for Opcode {
+//     fn from(value: CompleteStr<'a>) -> Self {
+//         match value.to_uppercase().as_str() {
+//             stringify!(LOAD) => Opcode::LOAD,
+//             _ => Opcode::IGL,
+//         }
+//     }
+// }
 
 declare_opcodes!(
     (LOAD, 0),
-
+    //
     (ADD, 10),
     (SUB, 11),
     (MUL, 12),
     (DIV, 13),
-
+    (INC, 14),
+    (DEC, 15),
+    //
     (EQ, 20),
     (NEQ, 21),
     (GT, 22),
@@ -66,15 +98,15 @@ declare_opcodes!(
     (LTE, 25),
     (JEQ, 26),
     (JNEQ, 27),
-
+    //
     (JMPB, 79),
     (JMP, 80),
     (JMPF, 81),
-
+    //
     (NOP, 98),
     (ALOC, 100),
-
-    (HLT, 254)
+    //
+    (HLT, 254) // IGL -> 255
 );
 
 pub struct Instruction {

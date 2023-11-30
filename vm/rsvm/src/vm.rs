@@ -67,6 +67,16 @@ impl VM {
                 self.registers[self.next_8_bits() as usize] = reg1 / reg2;
                 self.remainder = (reg1 % reg2) as u32;
             }
+            Opcode::INC => {
+                let reg = self.next_8_bits();
+                self.registers[reg as usize] += 1;
+                self.next_16_bits(); //eat
+            }
+            Opcode::DEC => {
+                let reg = self.next_8_bits();
+                self.registers[reg as usize] -= 1;
+                self.next_16_bits(); //eat
+            }
 
             Opcode::EQ => {
                 let (reg1, reg2) = self.binary_operaters_value();
@@ -132,6 +142,11 @@ impl VM {
                 let num_bytes = self.registers[reg];
                 let new_heap_size = self.heap.len() as i32 + num_bytes;
                 self.heap.resize(new_heap_size as usize, 0);
+            }
+
+            Opcode::NOP => {
+                self.next_16_bits();
+                self.next_8_bits();
             }
 
             Opcode::HLT => {
@@ -277,5 +292,16 @@ mod tests {
         vm.program = vec![Opcode::ALOC.into(), 0, 0, 0];
         vm.run_once();
         assert_eq!(vm.heap.len(), 1024);
+    }
+
+    #[test]
+    fn test_opcode_inc_and_dec() {
+        let mut vm = VM::new();
+        vm.registers[0] = 1024;
+        vm.program = vec![Opcode::INC.into(), 0, 0, 0, Opcode::DEC.into(), 0, 0, 0];
+        vm.run_once();
+        assert_eq!(vm.registers[0], 1025);
+        vm.run_once();
+        assert_eq!(vm.registers[0], 1024);
     }
 }

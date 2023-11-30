@@ -69,7 +69,7 @@ impl AssemblerInstruction {
         match self.opcode {
             Token::Op { code } => match code {
                 _ => {
-                    ret.push(code as u8);
+                    ret.push(Into::<u8>::into(code));
                 }
             },
             _ => {
@@ -83,10 +83,14 @@ impl AssemblerInstruction {
                 AssemblerInstruction::extract_operand(token, &mut ret);
             }
         }
+        while ret.len() < 4 {
+            ret.push(0)
+        }
+
         ret
     }
 
-    pub fn extract_operand(token: &Token, ret: &mut Vec<u8>) {
+    fn extract_operand(token: &Token, ret: &mut Vec<u8>) {
         match token {
             Token::Register { reg_num } => {
                 ret.push(*reg_num);

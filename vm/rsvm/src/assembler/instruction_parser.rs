@@ -1,64 +1,38 @@
-use nom::alt;
-use nom::multispace;
+use nom::opt;
 use nom::types::CompleteStr;
 
+use super::label_parser::label_declaration;
 use super::opcode_parsers::opcode;
-use super::operand_parsers::integer_operand;
-use super::register_parsers::register;
+use super::operand_parsers::operand;
+
 use super::Token;
 
 #[derive(Debug, PartialEq)]
 pub struct AssemblerInstruction {
-    opcode: Token,
-    operand1: Option<Token>,
-    operand2: Option<Token>,
-    operand3: Option<Token>,
+    pub opcode: Option<Token>,
+    pub label: Option<Token>,
+    pub directive: Option<Token>,
+    pub operand1: Option<Token>,
+    pub operand2: Option<Token>,
+    pub operand3: Option<Token>,
 }
 
-named!(pub instruction<CompleteStr,AssemblerInstruction>,
+named!(pub instruction_combined<CompleteStr, AssemblerInstruction>,
     do_parse!(
-        ins: alt!(
-            instruction_one|
-            instruction_two
-        ) >>
-        (
-            ins
-        )
-    )
-);
-
-// I don't know why this, but it did compile succuess
-
-/// Handles instructions of the following form:
-// LOAD $0 #100
-named!(instruction_one<CompleteStr, AssemblerInstruction >,
-    do_parse!(
+        l: opt!(label_declaration) >>
         o: opcode >>
-        r: register >>
-        i: integer_operand >>
+        o1: opt!(operand) >>
+        o2: opt!(operand) >>
+        o3: opt!(operand) >>
         (
             AssemblerInstruction{
-                opcode: o,
-                operand1: Some(r),
-                operand2: Some(i),
-                operand3:None ,
+                opcode: Some(o),
+                label: l,
+                directive: None,
+                operand1: o1,
+                operand2: o2,
+                operand3: o3
             }
-        )
-    )
-);
-
-named!(instruction_two<CompleteStr,AssemblerInstruction>,
-    do_parse!(
-        o: opcode >>
-        opt!(multispace)>>
-        (
-            AssemblerInstruction{
-                opcode: o,
-                operand1: None,
-                operand2: None,
-                operand3: None,
-            }
-
         )
     )
 );
@@ -67,7 +41,7 @@ impl AssemblerInstruction {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut ret = vec![];
         match self.opcode {
-            Token::Op { code } => match code {
+            Some(Token::Op { code }) => match code {
                 _ => {
                     ret.push(Into::<u8>::into(code));
                 }
@@ -118,16 +92,18 @@ mod tests {
 
     #[test]
     fn test_parse_instruction_from_one() {
-        let result = instruction_one(CompleteStr("load $0 #100\n"));
+        let result = instruction_combined(CompleteStr("load $0 #100\n"));
         assert_eq!(
             result,
             Ok((
                 CompleteStr(""),
                 AssemblerInstruction {
-                    opcode: Token::Op { code: Opcode::LOAD },
+                    opcode: Some(Token::Op { code: Opcode::LOAD }),
                     operand1: Some(Token::Register { reg_num: 0 }),
                     operand2: Some(Token::IntegerOperand { value: 100 }),
-                    operand3: None
+                    operand3: None,
+                    label: None,
+                    directive: None,
                 }
             ))
         );
@@ -135,16 +111,18 @@ mod tests {
 
     #[test]
     fn test_parse_instruction_from_two() {
-        let result = instruction_two("hlt\n".into());
+        let result = instruction_combined("hlt\n".into());
         assert_eq!(
             result,
             Ok((
-                CompleteStr(""),
+                CompleteStr("\n"),
                 AssemblerInstruction {
-                    opcode: Token::Op { code: Opcode::HLT },
+                    opcode: Some(Token::Op { code: Opcode::HLT }),
                     operand1: None,
                     operand2: None,
                     operand3: None,
+                    label: None,
+                    directive: None
                 }
             ))
         );

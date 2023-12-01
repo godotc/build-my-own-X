@@ -1,6 +1,6 @@
 use nom::types::CompleteStr;
 
-use super::instruction_parser::{instruction, AssemblerInstruction};
+use super::{directive_parser::instruction, instruction_parser::AssemblerInstruction};
 
 pub struct Program {
     instructions: Vec<AssemblerInstruction>,

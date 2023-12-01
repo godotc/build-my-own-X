@@ -1,8 +1,15 @@
 use nom::{digit, types::CompleteStr};
 
-use super::Token;
+use super::{register_parsers::register, Token};
 
-named!(pub integer_operand < CompleteStr, Token>,
+named!(pub operand<CompleteStr, Token>,
+    alt!(
+        integer_operand|
+        register
+    )
+);
+
+named!(integer_operand < CompleteStr, Token>,
     ws!(  // clear all white space
         do_parse!(
             tag!("#") >>

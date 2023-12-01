@@ -1,7 +1,11 @@
 use std::{
-    io::{self, Write},
+    fs::File,
+    io::{self, Read, Write},
     num::ParseIntError,
+    path::Path,
 };
+
+use nom::types::CompleteStr;
 
 use crate::{assembler::program_parser::program, vm::VM};
 
@@ -39,6 +43,29 @@ impl REPL {
                 ".quit" => {
                     println!("Farewell!");
                     std::process::exit(0);
+                }
+                ".load_file" => {
+                    print!("Enter the path to the file you want to load: ");
+                    io::stdout().flush().expect("Unable to flush stdout");
+                    let mut tmp = String::new();
+                    stdin
+                        .read_line(&mut tmp)
+                        .expect("Unable  to read line from user");
+                    let tmp = tmp.trim();
+                    let filename = Path::new(&tmp);
+                    let mut f = File::open(filename).expect("Unable to open file ");
+                    let mut content = String::new();
+                    f.read_to_string(&mut content)
+                        .expect("Error on reading this file");
+
+                    let program = match program(CompleteStr(&content)) {
+                        Ok((remainder, program)) => program,
+                        Err(e) => {
+                            println!("Unable to parse input: {:?}", e);
+                            continue;
+                        }
+                    };
+                    self.vm.program.append(&mut program.to_bytes());
                 }
                 ".history" => {
                     for cmd in &self.command_buffer {

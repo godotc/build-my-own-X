@@ -82,6 +82,28 @@ impl AssemblerInstruction {
             }
         }
     }
+
+    pub fn is_label(&self) -> bool {
+        match &self.label {
+            Some(label) => match label {
+                Token::LabelDeclaration { name } => true,
+                // Token::LabelUsage { name } => true,
+                _ => false,
+            },
+            None => false,
+        }
+    }
+
+    pub fn label_name(&self) -> Option<String> {
+        match &self.label {
+            Some(label) => match label {
+                Token::LabelDeclaration { name } => Some(name.to_string()),
+                // Token::LabelUsage { name } => true,
+                _ => None,
+            },
+            None => None,
+        }
+    }
 }
 
 #[cfg(test)]

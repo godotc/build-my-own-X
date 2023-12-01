@@ -3,7 +3,7 @@ use nom::types::CompleteStr;
 use super::{directive_parser::instruction, instruction_parser::AssemblerInstruction};
 
 pub struct Program {
-    instructions: Vec<AssemblerInstruction>,
+    pub instructions: Vec<AssemblerInstruction>,
 }
 
 named!(pub program<CompleteStr, Program>,

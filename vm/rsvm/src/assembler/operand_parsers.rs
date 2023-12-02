@@ -1,11 +1,13 @@
 use nom::{digit, types::CompleteStr};
 
-use super::{register_parsers::register, Token};
+use super::{label_parser::label_usage, register_parsers::register, Token};
 
 named!(pub operand<CompleteStr, Token>,
     alt!(
         integer_operand|
-        register
+        label_usage|
+        register|
+        irstring
     )
 );
 
@@ -23,6 +25,17 @@ named!(integer_operand < CompleteStr, Token>,
     )
 );
 
+named!(irstring<CompleteStr,Token>,
+do_parse!(
+    tag!("'")>>
+    content: take_until!("'")>>
+    tag!("'")>>
+    (
+        Token::IrString{name:content.to_string()}
+    )
+
+));
+
 #[cfg(test)]
 mod tests {
 
@@ -39,5 +52,17 @@ mod tests {
 
         let result = integer_operand(CompleteStr("10"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_string_operand() {
+        let result = irstring(CompleteStr("'The Content'"));
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap().1,
+            Token::IrString {
+                name: "The Content".to_string()
+            }
+        )
     }
 }

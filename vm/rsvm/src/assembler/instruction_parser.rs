@@ -1,10 +1,12 @@
-use nom::opt;
+use byteorder::{LittleEndian, WriteBytesExt};
 use nom::types::CompleteStr;
+use nom::{opt, ExtendInto};
 
 use super::label_parser::label_declaration;
 use super::opcode_parsers::opcode;
 use super::operand_parsers::operand;
 
+use super::symbol::SymbolTable;
 use super::Token;
 
 #[derive(Debug, PartialEq)]
@@ -38,7 +40,7 @@ named!(pub instruction_combined<CompleteStr, AssemblerInstruction>,
 );
 
 impl AssemblerInstruction {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, symbols: &SymbolTable) -> Vec<u8> {
         let mut ret = vec![];
         match self.opcode {
             Some(Token::Op { code }) => match code {
@@ -54,7 +56,7 @@ impl AssemblerInstruction {
 
         for operand in &[&self.operand1, &self.operand2, &self.operand3] {
             if let Some(token) = operand {
-                AssemblerInstruction::extract_operand(token, &mut ret);
+                AssemblerInstruction::extract_operand(token, &mut ret, symbols);
             }
         }
         while ret.len() < 4 {
@@ -64,18 +66,34 @@ impl AssemblerInstruction {
         ret
     }
 
-    fn extract_operand(token: &Token, ret: &mut Vec<u8>) {
+    fn extract_operand(token: &Token, ret: &mut Vec<u8>, symbols: &SymbolTable) {
         match token {
             Token::Register { reg_num } => {
                 ret.push(*reg_num);
             }
             Token::IntegerOperand { value } => {
-                let raw = *value as u16;
-                let byte1 = raw; // low
-                let byte2 = raw >> 8; // high
-                ret.push(byte2 as u8);
-                ret.push(byte1 as u8);
+                // let raw = *value as u16;
+                // let byte1 = raw; // low
+                // let byte2 = raw >> 8; // high
+                // ret.push(byte2 as u8);
+                // ret.push(byte1 as u8);
+
+                let mut wtr = vec![];
+                wtr.write_i16::<LittleEndian>(*value as i16).unwrap();
+                ret.push(wtr[1]);
+                ret.push(wtr[0]);
             }
+            Token::LabelUsage { name } => match symbols.symbol_value(&name) {
+                Some(v) => {
+                    let mut wtr = vec![];
+                    wtr.write_u32::<LittleEndian>(v).unwrap();
+                    ret.push(wtr[1]);
+                    ret.push(wtr[0]);
+                }
+                None => {
+                    error!("No value found for {:?}", name);
+                }
+            },
             _ => {
                 println!("Opcode found in operand field");
                 std::process::exit(1);
@@ -87,18 +105,54 @@ impl AssemblerInstruction {
         match &self.label {
             Some(label) => match label {
                 Token::LabelDeclaration { name } => true,
-                // Token::LabelUsage { name } => true,
+                Token::LabelUsage { name } => true,
                 _ => false,
             },
             None => false,
         }
     }
 
-    pub fn label_name(&self) -> Option<String> {
+    pub fn is_directive(&self) -> bool {
+        self.label.is_some()
+    }
+
+    pub fn get_label_name(&self) -> Option<String> {
         match &self.label {
             Some(label) => match label {
-                Token::LabelDeclaration { name } => Some(name.to_string()),
-                // Token::LabelUsage { name } => true,
+                Token::LabelDeclaration { name } => Some(name.clone()),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
+    pub(crate) fn get_directive_name(&self) -> Option<String> {
+        match &self.directive {
+            Some(directive) => match directive {
+                Token::Directive { name } => Some(name.to_string()),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
+    pub(crate) fn has_operands(&self) -> bool {
+        for operand in [&self.operand1, &self.operand2, &self.operand3] {
+            if operand.is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(crate) fn is_opcode(&self) -> bool {
+        self.opcode.is_some()
+    }
+
+    pub(crate) fn get_string_constant(&self) -> Option<String> {
+        match &self.operand1 {
+            Some(token) => match token {
+                Token::IrString { name } => Some(name.to_string()),
                 _ => None,
             },
             None => None,

@@ -1,6 +1,8 @@
 use nom::types::CompleteStr;
 
-use super::{directive_parser::instruction, instruction_parser::AssemblerInstruction};
+use super::{
+    directive_parser::instruction, instruction_parser::AssemblerInstruction, symbol::SymbolTable,
+};
 
 pub struct Program {
     pub instructions: Vec<AssemblerInstruction>,
@@ -18,10 +20,10 @@ named!(pub program<CompleteStr, Program>,
 );
 
 impl Program {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, symbols: &SymbolTable) -> Vec<u8> {
         let mut program = vec![];
         for inst in &self.instructions {
-            program.append(&mut inst.to_bytes())
+            program.append(&mut inst.to_bytes(symbols));
         }
         program
     }
@@ -29,6 +31,10 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
+    use nom::types::CompleteStr;
+
+    use crate::assembler::symbol::SymbolTable;
+
     use super::program;
 
     #[test]
@@ -47,8 +53,16 @@ mod tests {
         let result = program("load $0 #100\n".into());
         assert!(result.is_ok());
         let (_, p) = result.unwrap();
-        let bytecodes = p.to_bytes();
+        let symbols = SymbolTable::new();
+        let bytecodes = p.to_bytes(&symbols);
         assert_eq!(bytecodes.len(), 4);
         println!("{:?}", bytecodes);
+    }
+
+    #[test]
+    fn test_complete_program() {
+        let result = CompleteStr(".data\nhello .asciiz 'Hello!'\n.code\nhlt");
+        let program = program(result);
+        assert!(program.is_ok());
     }
 }

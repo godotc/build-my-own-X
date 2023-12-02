@@ -106,6 +106,8 @@ declare_opcodes!(
     (NOP, 98),
     (ALOC, 100),
     //
+    (PRT, 101),
+    //
     (HLT, 254) // IGL -> 255
 );
 

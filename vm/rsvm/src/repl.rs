@@ -65,7 +65,8 @@ impl REPL {
                             continue;
                         }
                     };
-                    self.vm.program.append(&mut program.to_bytes());
+                    // TODO & FIXME
+                    // self.vm.program.append(&mut program.to_bytes());
                 }
                 ".history" => {
                     for cmd in &self.command_buffer {
@@ -92,7 +93,9 @@ impl REPL {
                             continue;
                         }
                     };
-                    self.vm.program.append(&mut program.to_bytes());
+                    // TODO & FIXME
+                    // self.vm.program.append(&mut program.to_bytes());
+                    // self.vm.program.append(&mut program.to_bytes());
                     self.vm.run_once();
                 }
             }

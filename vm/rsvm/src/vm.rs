@@ -1,4 +1,12 @@
-use crate::instruction::Opcode;
+use core::slice;
+use std::{io::Cursor, vec};
+
+use byteorder::{LittleEndian, ReadBytesExt};
+
+use crate::{
+    assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX},
+    instruction::Opcode,
+};
 
 #[derive(Debug)]
 pub struct VM {
@@ -6,6 +14,7 @@ pub struct VM {
     pc: usize, // program counter
     pub program: Vec<u8>,
     heap: Vec<u8>,
+    pub ro_data: Vec<u8>,
 
     remainder: u32,   //  int left after divide
     equal_flag: bool, // the result of last comparison op
@@ -20,11 +29,21 @@ impl VM {
             heap: vec![],
             remainder: 0,
             equal_flag: false,
+            ro_data: vec![],
         }
     }
 
     pub fn run(&mut self) {
         let mut is_done = false;
+
+        if !self.verify_hader() {
+            // todo: events
+            error!("Header was incorrect");
+            return; //self.evetns.clone;
+        }
+
+        self.pc = 68 + self.get_starting_offset();
+
         while !is_done {
             is_done = self.execute_instructions();
         }
@@ -36,6 +55,9 @@ impl VM {
 
     pub fn add_byte(&mut self, b: u8) {
         self.program.push(b);
+    }
+    pub fn add_bytes(&mut self, mut bytes: Vec<u8>) {
+        self.program.append(&mut bytes);
     }
 
     fn execute_instructions(&mut self) -> bool {
@@ -137,16 +159,31 @@ impl VM {
                 self.pc += target as usize;
             }
 
+            Opcode::NOP => {
+                self.next_16_bits();
+                self.next_8_bits();
+            }
             Opcode::ALOC => {
                 let reg = self.next_8_bits() as usize;
                 let num_bytes = self.registers[reg];
                 let new_heap_size = self.heap.len() as i32 + num_bytes;
                 self.heap.resize(new_heap_size as usize, 0);
             }
-
-            Opcode::NOP => {
-                self.next_16_bits();
-                self.next_8_bits();
+            Opcode::PRT => {
+                let starting_offset = self.next_16_bits() as usize;
+                let mut ending_offset = starting_offset;
+                let slice = self.ro_data.as_slice();
+                // trance the string till '\0'
+                while slice[ending_offset] != 0 {
+                    ending_offset += 1;
+                }
+                let ret = std::str::from_utf8(&slice[starting_offset..ending_offset]);
+                match ret {
+                    Ok(s) => print!("{}", s),
+                    Err(e) => {
+                        println!("Error decoding string for prts instruction: {:#?}", e)
+                    }
+                }
             }
 
             Opcode::HLT => {
@@ -187,6 +224,32 @@ impl VM {
             self.registers[self.next_8_bits() as usize],
             self.registers[self.next_8_bits() as usize],
         )
+    }
+
+    fn verify_hader(&self) -> bool {
+        if self.program[0..4] != PIE_HEADER_PREFIX {
+            return false;
+        }
+        true
+    }
+
+    // just add the header bytes before program
+    fn prepend_header(mut b: Vec<u8>) -> Vec<u8> {
+        let mut prepension = vec![];
+        for byte in PIE_HEADER_PREFIX {
+            prepension.push(byte.clone());
+        }
+        // 4 bytes for telling the vm code starting offset
+        while prepension.len() <= PIE_HEADER_LENGTH + 4 {
+            prepension.push(0);
+        }
+        prepension.append(&mut b);
+        prepension
+    }
+
+    fn get_starting_offset(&self) -> usize {
+        let mut cursor = Cursor::new(&self.program[64..68]);
+        cursor.read_u32::<LittleEndian>().unwrap() as usize
     }
 }
 
@@ -303,5 +366,13 @@ mod tests {
         assert_eq!(vm.registers[0], 1025);
         vm.run_once();
         assert_eq!(vm.registers[0], 1024);
+    }
+    #[test]
+    fn test_mul_opcode() {
+        let mut vm = VM::new();
+        vm.program = vec![Opcode::MUL.into(), 0, 1, 2];
+        vm.program = VM::prepend_header(vm.program);
+        vm.run();
+        assert_eq!(vm.registers[2], 50)
     }
 }

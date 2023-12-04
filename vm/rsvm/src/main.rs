@@ -1,10 +1,12 @@
 use std::{fs::File, io::Read, path::Path};
 
 use clap::{load_yaml, App};
-use nom::Err;
+use log::info;
 use rsvm::{assembler, repl, vm};
 
 fn main() {
+    env_logger::init();
+    info!("Starting logging!");
     let yaml = load_yaml!("../cfg/cli.yml");
     let mathches = App::from_yaml(yaml).get_matches();
     let target_file = mathches.value_of("INPUT_FILE");

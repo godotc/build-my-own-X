@@ -96,8 +96,10 @@ declare_opcodes!(
     (LT, 23),
     (GTE, 24),
     (LTE, 25),
+    //
     (JEQ, 26),
     (JNEQ, 27),
+    // (DJMPE, 28),
     //
     (JMPB, 79),
     (JMP, 80),
@@ -106,7 +108,7 @@ declare_opcodes!(
     (NOP, 98),
     (ALOC, 100),
     //
-    (PRT, 101),
+    (PRTS, 101),
     //
     (HLT, 254) // IGL -> 255
 );

@@ -5,13 +5,21 @@ use std::{
     path::Path,
 };
 
-use nom::types::CompleteStr;
-
-use crate::{assembler::program_parser::program, vm::VM};
+use crate::{
+    assembler::{program_parser::program, Assembler},
+    vm::VM,
+};
 
 pub struct REPL {
     command_buffer: Vec<String>,
     vm: VM,
+    asm: Assembler,
+}
+
+impl Default for REPL {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl REPL {
@@ -19,6 +27,7 @@ impl REPL {
         REPL {
             command_buffer: vec![],
             vm: VM::new(),
+            asm: Assembler::new(),
         }
     }
 
@@ -44,30 +53,6 @@ impl REPL {
                     println!("Farewell!");
                     std::process::exit(0);
                 }
-                ".load_file" => {
-                    print!("Enter the path to the file you want to load: ");
-                    io::stdout().flush().expect("Unable to flush stdout");
-                    let mut tmp = String::new();
-                    stdin
-                        .read_line(&mut tmp)
-                        .expect("Unable  to read line from user");
-                    let tmp = tmp.trim();
-                    let filename = Path::new(&tmp);
-                    let mut f = File::open(filename).expect("Unable to open file ");
-                    let mut content = String::new();
-                    f.read_to_string(&mut content)
-                        .expect("Error on reading this file");
-
-                    let program = match program(CompleteStr(&content)) {
-                        Ok((_remainder, program)) => program,
-                        Err(e) => {
-                            println!("Unable to parse input: {:?}", e);
-                            continue;
-                        }
-                    };
-                    // TODO & FIXME
-                    // self.vm.program.append(&mut program.to_bytes());
-                }
                 ".history" => {
                     for cmd in &self.command_buffer {
                         println!("{}", cmd);
@@ -85,6 +70,46 @@ impl REPL {
                     println!("{:#?}", self.vm.registers);
                     println!("End of Register Listing");
                 }
+                ".clear_program" => {
+                    println!("Removing all bytes from VM's program vector...");
+                    self.vm.program.truncate(0);
+                    println!("Done!");
+                }
+                ".symbols" => {
+                    println!("Listing symbols table:");
+                    println!("{:#?}", self.asm.symbols);
+                    println!("End of Symbols Listing");
+                }
+                ".load_file" => {
+                    print!("Enter the path to the file you want to load: ");
+                    io::stdout().flush().expect("Unable to flush stdout");
+                    let mut tmp = String::new();
+                    stdin
+                        .read_line(&mut tmp)
+                        .expect("Unable  to read line from user");
+                    let tmp = tmp.trim();
+                    let filename = Path::new(&tmp);
+                    let mut f = File::open(filename).expect("Unable to open file ");
+
+                    let mut content = String::new();
+                    f.read_to_string(&mut content)
+                        .expect("Error on reading this file");
+
+                    match self.asm.assemble(&content) {
+                        Ok(mut assembled_program) => {
+                            println!("Sending assembled program to VM");
+                            self.vm.program.append(&mut assembled_program);
+                            println!("{:#?}", self.vm.program);
+                            self.vm.run();
+                        }
+                        Err(errors) => {
+                            for err in errors {
+                                println!("Unable to parse input: {}", err);
+                            }
+                            continue;
+                        }
+                    }
+                }
                 _ => {
                     let program = match program(nom::types::CompleteStr(buffer)) {
                         Ok((_, program)) => program,
@@ -93,9 +118,9 @@ impl REPL {
                             continue;
                         }
                     };
-                    // TODO & FIXME
-                    // self.vm.program.append(&mut program.to_bytes());
-                    // self.vm.program.append(&mut program.to_bytes());
+                    self.vm
+                        .program
+                        .append(&mut program.to_bytes(&self.asm.symbols));
                     self.vm.run_once();
                 }
             }
@@ -110,7 +135,7 @@ impl REPL {
     ///
     #[allow(dead_code)]
     fn parse_hex(&mut self, i: &str) -> Result<Vec<u8>, ParseIntError> {
-        let split = i.split(" ").collect::<Vec<&str>>();
+        let split = i.split(' ').collect::<Vec<&str>>();
         let mut results = vec![];
 
         for hex_str in split {

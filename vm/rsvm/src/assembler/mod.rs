@@ -274,6 +274,9 @@ impl Assembler {
                     self.ro.push(*b);
                     self.ro_offset += 1;
                 }
+                // null terminatation bit for c-string
+                self.ro.push(0);
+                self.ro_offset += 1;
             }
             None => {
                 println!("String constant following an .asciiz was empty");
@@ -325,7 +328,7 @@ mod tests {
         load $2 #0
         test: inc $0
         neq $0 $2
-        jmpe @test
+        jeq @test
         hlt
         ";
         let program = asm.assemble(test_string).unwrap();

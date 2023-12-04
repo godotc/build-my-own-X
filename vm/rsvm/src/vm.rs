@@ -14,7 +14,7 @@ pub struct VM {
     pc: usize, // program counter
     pub program: Vec<u8>,
     heap: Vec<u8>,
-    pub ro_data: Vec<u8>,
+    ro_data: Vec<u8>,
 
     remainder: u32,   //  int left after divide
     equal_flag: bool, // the result of last comparison op
@@ -33,6 +33,12 @@ impl VM {
         }
     }
 
+    pub fn new_with_header() -> VM {
+        let mut vm = Self::new();
+        vm.program = VM::prepend_header(vm.program);
+        vm
+    }
+
     pub fn run(&mut self) {
         let mut is_done = false;
 
@@ -42,7 +48,7 @@ impl VM {
             return; //self.evetns.clone;
         }
 
-        self.pc = 68 + self.get_starting_offset();
+        self.pc = self.get_header_offset() + self.get_starting_offset();
 
         while !is_done {
             is_done = self.execute_instructions();
@@ -169,7 +175,7 @@ impl VM {
                 let new_heap_size = self.heap.len() as i32 + num_bytes;
                 self.heap.resize(new_heap_size as usize, 0);
             }
-            Opcode::PRT => {
+            Opcode::PRTS => {
                 let starting_offset = self.next_16_bits() as usize;
                 let mut ending_offset = starting_offset;
                 let slice = self.ro_data.as_slice();
@@ -240,11 +246,15 @@ impl VM {
             prepension.push(byte.clone());
         }
         // 4 bytes for telling the vm code starting offset
-        while prepension.len() <= PIE_HEADER_LENGTH + 4 {
+        while prepension.len() < PIE_HEADER_LENGTH + 4 {
             prepension.push(0);
         }
         prepension.append(&mut b);
         prepension
+    }
+
+    fn get_header_offset(&self) -> usize {
+        PIE_HEADER_LENGTH + 4
     }
 
     fn get_starting_offset(&self) -> usize {
@@ -270,24 +280,26 @@ mod tests {
     fn test_opcode_hlt() {
         let mut test_vm = VM::new();
         let test_bytes = vec![99, 0, 0, 0];
-        test_vm.program = test_bytes;
+        test_vm.program = VM::prepend_header(test_bytes);
         test_vm.run();
-        assert_eq!(test_vm.pc, 1);
+        assert_eq!(test_vm.pc, test_vm.get_header_offset() + 1);
     }
 
     #[test]
-    fn test_opcode_ilg() {
-        let mut test_vm = VM::new();
-        let test_bytes = vec![Opcode::IGL.into(), 0, 0, 0];
-        test_vm.program = test_bytes;
+    fn test_opcode_igl() {
+        let mut test_vm = VM::new_with_header();
+        let mut test_bytes = vec![Opcode::IGL.into(), 0, 0, 0];
+        test_vm.program.append(&mut test_bytes);
         test_vm.run();
-        assert_eq!(test_vm.pc, 1);
+        assert_eq!(test_vm.pc, test_vm.get_header_offset() + 1);
     }
 
     #[test]
     fn test_opcode_load() {
-        let mut test_vm = VM::new();
-        test_vm.program = vec![0, 0, 1, 244];
+        let mut test_vm = VM::new_with_header();
+        test_vm
+            .program
+            .append(&mut vec![Opcode::LOAD.into(), 0, 1, 244]);
         test_vm.run();
         assert_eq!(test_vm.registers[0], 500);
     }
@@ -368,11 +380,21 @@ mod tests {
         assert_eq!(vm.registers[0], 1024);
     }
     #[test]
-    fn test_mul_opcode() {
-        let mut vm = VM::new();
-        vm.program = vec![Opcode::MUL.into(), 0, 1, 2];
-        vm.program = VM::prepend_header(vm.program);
+    fn test_opcode_mul() {
+        let mut vm = VM::new_with_header();
+        vm.program.append(&mut vec![Opcode::MUL.into(), 0, 1, 2]);
+        vm.registers[0] = 25;
+        vm.registers[1] = 2;
         vm.run();
         assert_eq!(vm.registers[2], 50)
+    }
+
+    #[test]
+    fn test_opcode_prts() {
+        let mut vm = VM::new();
+        vm.ro_data
+            .append(&mut vec![72, 101, 108, 108, 101, '\n' as u8, 0]);
+        vm.program = vec![Opcode::PRTS.into(), 0, 0, 0];
+        vm.run_once();
     }
 }

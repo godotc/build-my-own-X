@@ -1,6 +1,6 @@
 use byteorder::{LittleEndian, WriteBytesExt};
+use nom::opt;
 use nom::types::CompleteStr;
-use nom::{opt, ExtendInto};
 
 use super::label_parser::label_declaration;
 use super::opcode_parsers::opcode;
@@ -45,7 +45,7 @@ impl AssemblerInstruction {
         match self.opcode {
             Some(Token::Op { code }) => match code {
                 _ => {
-                    ret.push(Into::<u8>::into(code));
+                    ret.push(code.into());
                 }
             },
             _ => {
@@ -95,8 +95,8 @@ impl AssemblerInstruction {
                 }
             },
             _ => {
-                println!("Opcode found in operand field");
-                std::process::exit(1);
+                println!("Opcode found in operand field: {:?}", token);
+                // std::process::exit(1);
             }
         }
     }
@@ -104,8 +104,8 @@ impl AssemblerInstruction {
     pub fn is_label(&self) -> bool {
         match &self.label {
             Some(label) => match label {
-                Token::LabelDeclaration { name } => true,
-                Token::LabelUsage { name } => true,
+                Token::LabelDeclaration { name: _ } => true,
+                Token::LabelUsage { name: _ } => true,
                 _ => false,
             },
             None => false,
@@ -137,12 +137,7 @@ impl AssemblerInstruction {
     }
 
     pub(crate) fn has_operands(&self) -> bool {
-        for operand in [&self.operand1, &self.operand2, &self.operand3] {
-            if operand.is_some() {
-                return true;
-            }
-        }
-        false
+        self.operand1.is_some() || self.operand2.is_some() || self.operand3.is_some()
     }
 
     pub(crate) fn is_opcode(&self) -> bool {

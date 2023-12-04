@@ -8,7 +8,6 @@ pub mod assembler;
 extern crate nom;
 
 extern crate clap;
-use clap::{App, Arg, SubCommand};
 
 #[macro_use]
 extern crate log;

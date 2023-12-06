@@ -1,31 +1,6 @@
-use super::{
-    instruction_parser::{instruction_combined, AssemblerInstruction},
-    label_parser::label_declaration,
-};
+use super::{instruction_parser::AssemblerInstruction, label_parser::label_declaration};
 use super::{operand_parsers::operand, Token};
 use nom::{alpha1, types::CompleteStr};
-
-named!(pub instruction<CompleteStr,AssemblerInstruction>,
-    do_parse!(
-        ins: alt!(
-            instruction_combined|
-            directive
-        ) >>
-        (
-            ins
-        )
-    )
-);
-
-named!(pub directive_declaration<CompleteStr,Token>,
-    do_parse!(
-        tag!(".") >>
-        name: alpha1 >>
-        (
-            Token::Directive { name: name.to_string() }
-        )
-    )
-);
 
 named!(pub directive<CompleteStr,AssemblerInstruction>,
     do_parse!(
@@ -56,6 +31,16 @@ named!(directive_combined<CompleteStr, AssemblerInstruction>,
                     operand3: o3,
                 }
             )
+        )
+    )
+);
+
+named!(pub directive_declaration<CompleteStr,Token>,
+    do_parse!(
+        tag!(".") >>
+        name: alpha1 >>
+        (
+            Token::Directive { name: name.to_string() }
         )
     )
 );

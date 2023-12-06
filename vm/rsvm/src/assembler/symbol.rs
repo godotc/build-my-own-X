@@ -9,10 +9,10 @@ pub enum SymbolType {
 pub struct Symbol {
     name: String,
     offset: Option<u32>,
-     symbol_type: SymbolType,
+    symbol_type: SymbolType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
 }

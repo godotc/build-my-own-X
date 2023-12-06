@@ -8,7 +8,7 @@ use crate::{
     instruction::Opcode,
 };
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct VM {
     pub registers: [i32; 32],
     pc: usize, // program counter
@@ -39,20 +39,23 @@ impl VM {
         vm
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> u32 {
+        //-> Option<u32> {
         let mut is_done = false;
 
         if !self.verify_hader() {
             // todo: events
             error!("Header was incorrect");
-            return; //self.evetns.clone;
+            return 1; //Some(1);
         }
 
-        self.pc = self.get_header_offset() + self.get_starting_offset();
+        self.pc = VM::get_header_offset() + self.get_starting_offset();
 
         while !is_done {
             is_done = self.execute_instructions();
         }
+
+        0 //Some(0)
     }
 
     pub fn run_once(&mut self) {
@@ -253,7 +256,7 @@ impl VM {
         prepension
     }
 
-    fn get_header_offset(&self) -> usize {
+    pub fn get_header_offset() -> usize {
         PIE_HEADER_LENGTH + 4
     }
 
@@ -282,7 +285,7 @@ mod tests {
         let test_bytes = vec![99, 0, 0, 0];
         test_vm.program = VM::prepend_header(test_bytes);
         test_vm.run();
-        assert_eq!(test_vm.pc, test_vm.get_header_offset() + 1);
+        assert_eq!(test_vm.pc, VM::get_header_offset() + 1);
     }
 
     #[test]
@@ -291,7 +294,7 @@ mod tests {
         let mut test_bytes = vec![Opcode::IGL.into(), 0, 0, 0];
         test_vm.program.append(&mut test_bytes);
         test_vm.run();
-        assert_eq!(test_vm.pc, test_vm.get_header_offset() + 1);
+        assert_eq!(test_vm.pc, VM::get_header_offset() + 1);
     }
 
     #[test]

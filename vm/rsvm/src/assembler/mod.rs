@@ -39,7 +39,7 @@ pub enum Token {
     Comment,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AssemblerPhase {
     First,
     Second,
@@ -52,7 +52,7 @@ pub enum AssemblerSection {
     Unknown,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assembler {
     /// Track phase state
     pub phase: AssemblerPhase,
@@ -126,6 +126,16 @@ impl Assembler {
     }
 
     fn process_first_phase(&mut self, p: &Program) {
+        // .data
+        // .code
+        // load $0 #100
+        // load $1 #1
+        // load $2 #0
+        // test: inc $0
+        // neq $0 $2
+        // jeq @test
+        // hlt
+        // ";
         for i in &p.instructions {
             if i.is_label() {
                 if self.current_section.is_some() {
@@ -160,6 +170,10 @@ impl Assembler {
                 self.process_directive(i);
             }
             self.current_instructon += 1;
+
+            // println!("{:?}", i);
+            // println!("{:?}", program.to_ascii_lowercase());
+            // println!("The new length: {}", program.len());
         }
         program
     }
@@ -199,7 +213,7 @@ impl Assembler {
             if i.is_label() {
                 match i.get_label_name() {
                     Some(name) => {
-                        let symbol = Symbol::new(name, SymbolType::Label);
+                        let symbol = Symbol::new_with_offset(name, SymbolType::Label, c);
                         self.symbols.add_symbol(symbol);
                     }
                     None => {}
@@ -314,6 +328,7 @@ impl<'a> From<&'a str> for AssemblerSection {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::vm::VM;
 
     #[test]
@@ -332,10 +347,15 @@ mod tests {
         hlt
         ";
         let program = asm.assemble(test_string).unwrap();
-        let mut vm = VM::new();
-        assert_eq!(program.len(), 96);
+        // just the PIE_HEADER_PREFIX.len() and instructions without the directive ".*" 4 + 7 * 4
+        assert_eq!(program.len(), 28 + PIE_HEADER_PREFIX.len());
+
+        let mut vm = VM::new_with_header();
         vm.add_bytes(program);
-        assert_eq!(vm.program.len(), 96);
+        assert_eq!(
+            vm.program.len(),
+            28 + PIE_HEADER_PREFIX.len() + VM::get_header_offset()
+        );
     }
 
     #[test]

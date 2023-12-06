@@ -1,7 +1,8 @@
 use nom::types::CompleteStr;
 
 use super::{
-    directive_parser::instruction, instruction_parser::AssemblerInstruction, symbol::SymbolTable,
+    instruction_parser::{instruction, AssemblerInstruction},
+    symbol::SymbolTable,
 };
 
 pub struct Program {

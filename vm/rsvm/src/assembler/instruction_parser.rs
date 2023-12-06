@@ -2,12 +2,25 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use nom::opt;
 use nom::types::CompleteStr;
 
+use super::directive_parser::directive;
 use super::label_parser::label_declaration;
 use super::opcode_parsers::opcode;
 use super::operand_parsers::operand;
 
 use super::symbol::SymbolTable;
 use super::Token;
+
+named!(pub instruction<CompleteStr,AssemblerInstruction>,
+    do_parse!(
+        ins: alt!(
+            instruction_combined|
+            directive
+        ) >>
+        (
+            ins
+        )
+    )
+);
 
 #[derive(Debug, PartialEq)]
 pub struct AssemblerInstruction {
@@ -113,7 +126,7 @@ impl AssemblerInstruction {
     }
 
     pub fn is_directive(&self) -> bool {
-        self.label.is_some()
+        self.directive.is_some()
     }
 
     pub fn get_label_name(&self) -> Option<String> {
@@ -193,6 +206,48 @@ mod tests {
                     operand2: None,
                     operand3: None,
                     label: None,
+                    directive: None
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_parse_instruction_with_label() {
+        let result = instruction_combined("hello: inc $0\n".into());
+        assert_eq!(
+            result,
+            Ok((
+                CompleteStr(""),
+                AssemblerInstruction {
+                    label: Some(Token::LabelDeclaration {
+                        name: "hello".to_string()
+                    }),
+                    opcode: Some(Token::Op { code: Opcode::INC }),
+                    operand1: Some(Token::Register { reg_num: 0 }),
+                    operand2: None,
+                    operand3: None,
+                    directive: None
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_parse_instruction_with_directive() {
+        let result = instruction_combined("hello: inc $0\n".into());
+        assert_eq!(
+            result,
+            Ok((
+                CompleteStr(""),
+                AssemblerInstruction {
+                    label: Some(Token::LabelDeclaration {
+                        name: "hello".to_string()
+                    }),
+                    opcode: Some(Token::Op { code: Opcode::INC }),
+                    operand1: Some(Token::Register { reg_num: 0 }),
+                    operand2: None,
+                    operand3: None,
                     directive: None
                 }
             ))

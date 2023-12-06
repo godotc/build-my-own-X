@@ -7,13 +7,16 @@ use std::{
 
 use crate::{
     assembler::{program_parser::program, Assembler},
+    scheduler::Scheduler,
     vm::VM,
 };
 
+#[derive(Debug, Clone)]
 pub struct REPL {
     command_buffer: Vec<String>,
     vm: VM,
     asm: Assembler,
+    scheduler: Scheduler,
 }
 
 impl Default for REPL {
@@ -28,6 +31,7 @@ impl REPL {
             command_buffer: vec![],
             vm: VM::new(),
             asm: Assembler::new(),
+            scheduler: Scheduler::new(),
         }
     }
 
@@ -80,27 +84,34 @@ impl REPL {
                     println!("{:#?}", self.asm.symbols);
                     println!("End of Symbols Listing");
                 }
-                ".load_file" => {
-                    print!("Enter the path to the file you want to load: ");
-                    io::stdout().flush().expect("Unable to flush stdout");
-                    let mut tmp = String::new();
-                    stdin
-                        .read_line(&mut tmp)
-                        .expect("Unable  to read line from user");
-                    let tmp = tmp.trim();
-                    let filename = Path::new(&tmp);
-                    let mut f = File::open(filename).expect("Unable to open file ");
-
-                    let mut content = String::new();
-                    f.read_to_string(&mut content)
-                        .expect("Error on reading this file");
-
-                    match self.asm.assemble(&content) {
+                ".load_file" => match self.get_data_from_load() {
+                    Some(content) => match self.asm.assemble(&content) {
                         Ok(mut assembled_program) => {
                             println!("Sending assembled program to VM");
                             self.vm.program.append(&mut assembled_program);
                             println!("{:#?}", self.vm.program);
                             self.vm.run();
+                        }
+                        Err(errors) => {
+                            for err in errors {
+                                println!("Unable to parse input: {}", err);
+                            }
+                            continue;
+                        }
+                    },
+                    None => continue,
+                },
+                ".spawn" => {
+                    let contents = self.get_data_from_load();
+                    if contents.is_none() {
+                        continue;
+                    }
+                    match self.asm.assemble(&contents.unwrap()) {
+                        Ok(mut assembled_program) => {
+                            println!("Sending assembled program to VM");
+                            self.vm.program.append(&mut assembled_program);
+                            println!("{:#?}", self.vm.program);
+                            self.scheduler.get_thread(self.vm.clone());
                         }
                         Err(errors) => {
                             for err in errors {
@@ -149,5 +160,37 @@ impl REPL {
         }
 
         Ok(results)
+    }
+
+    fn get_data_from_load(&mut self) -> Option<String> {
+        let stdin = io::stdin();
+        print!("Enter the path to the file you want to load: ");
+        io::stdout().flush().expect("Unable to flush stdout");
+        let mut tmp = String::new();
+
+        stdin
+            .read_line(&mut tmp)
+            .expect("Unable  to read line from user");
+        println!("Attemping to load progream from file...");
+
+        let tmp = tmp.trim();
+        let filename = Path::new(&tmp);
+
+        let mut f = match File::open(filename) {
+            Ok(f) => f,
+            Err(e) => {
+                println!("Unable to open file: {:?}", e);
+                return None;
+            }
+        };
+
+        let mut content = String::new();
+        match f.read_to_string(&mut content) {
+            Ok(_num_read) => Some(content),
+            Err(e) => {
+                println!("Error on reading this file: {:?}", e);
+                None
+            }
+        }
     }
 }

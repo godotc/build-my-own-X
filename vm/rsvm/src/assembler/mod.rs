@@ -1,5 +1,6 @@
 use std::vec;
 
+use byteorder::{LittleEndian, WriteBytesExt};
 use nom::types::CompleteStr;
 
 use crate::instruction::Opcode;
@@ -72,8 +73,7 @@ pub struct Assembler {
     current_instructon: u32,
 
     errors: Vec<AssemblerError>,
-
-    buf: [u8; 4],
+    // buf: [u8; 4],
 }
 
 impl Assembler {
@@ -88,7 +88,7 @@ impl Assembler {
             current_section: None,
             current_instructon: 0,
             errors: vec![],
-            buf: [0; 4],
+            // buf: [0; 4],
         }
     }
 
@@ -96,8 +96,7 @@ impl Assembler {
         // pass to parser
         match program(CompleteStr(&raw)) {
             Ok((_remainder, program)) => {
-                let mut assembled_program = self.write_pie_header();
-
+                // 1
                 self.process_first_phase(&program);
 
                 if !self.errors.is_empty() {
@@ -109,8 +108,11 @@ impl Assembler {
                     self.errors.push(AssemblerError::InsufficientSections);
                     return Err(self.errors.clone());
                 }
-
+                // 2
                 let mut body = self.process_second_phase(&program);
+
+                // header
+                let mut assembled_program = self.write_pie_header();
 
                 assembled_program.append(&mut body);
                 Ok(assembled_program)
@@ -183,6 +185,14 @@ impl Assembler {
         PIE_HEADER_PREFIX
             .iter()
             .for_each(|b| header.push(b.clone()));
+
+        while header.len() < PIE_HEADER_LENGTH {
+            header.push(0);
+        }
+
+        let mut wtr: Vec<u8> = vec![];
+        wtr.write_u32::<LittleEndian>(self.ro.len() as u32).unwrap();
+        header.append(&mut wtr);
         header
     }
 
@@ -238,7 +248,10 @@ impl Assembler {
             match directive_name.as_ref() {
                 // If this is the operand, we're declaring a null terminated string
                 "asciiz" => {
-                    self.handle_asciiz(i);
+                    self.handle_directive_asciiz(i);
+                }
+                "integer" => {
+                    self.handle_directive_integer(i);
                 }
                 _ => {
                     self.errors.push(AssemblerError::UnknownDirectiveFound {
@@ -268,7 +281,7 @@ impl Assembler {
 
     /// Handle a declarration of a null-terminated string:
     /// hello: .asciiz 'Hello!'
-    fn handle_asciiz(&mut self, i: &AssemblerInstruction) {
+    fn handle_directive_asciiz(&mut self, i: &AssemblerInstruction) {
         if self.phase != AssemblerPhase::First {
             return;
         }
@@ -294,6 +307,40 @@ impl Assembler {
             }
             None => {
                 println!("String constant following an .asciiz was empty");
+            }
+        }
+    }
+
+    /// Handle a declarration of a null-terminated string:
+    /// hello: .integer #233
+    fn handle_directive_integer(&mut self, i: &AssemblerInstruction) {
+        if self.phase != AssemblerPhase::First {
+            return;
+        }
+        match i.get_i32_constant() {
+            Some(v) => {
+                match i.get_label_name() {
+                    Some(name) => self.symbols.set_symbol_offset(&name, self.ro_offset),
+                    None => {
+                        // Needing a label
+                        // This would be someone typing:
+                        // .integer #100
+                        println!("Found a ingeger constant with no associated label!");
+                        return;
+                    }
+                };
+                let mut wtr: Vec<u8> = vec![];
+                wtr.write_i32::<LittleEndian>(v).unwrap();
+                for b in &wtr {
+                    self.ro.push(*b);
+                    self.ro_offset += 1;
+                }
+                // null terminatation bit for c-string
+                self.ro.push(0);
+                self.ro_offset += 1;
+            }
+            None => {
+                println!("Integer constant following an .integer was empty");
             }
         }
     }
@@ -348,14 +395,12 @@ mod tests {
         ";
         let program = asm.assemble(test_string).unwrap();
         // just the PIE_HEADER_PREFIX.len() and instructions without the directive ".*" 4 + 7 * 4
-        assert_eq!(program.len(), 28 + PIE_HEADER_PREFIX.len());
+        let len_should_be = 4 * 7 + VM::get_header_offset();
+        assert_eq!(program.len(), len_should_be);
 
-        let mut vm = VM::new_with_header();
+        let mut vm = VM::new();
         vm.add_bytes(program);
-        assert_eq!(
-            vm.program.len(),
-            28 + PIE_HEADER_PREFIX.len() + VM::get_header_offset()
-        );
+        assert_eq!(vm.program.len(), len_should_be);
     }
 
     #[test]
@@ -418,7 +463,7 @@ mod tests {
         .code
         ";
         let program = asm.assemble(test_string);
-        assert_eq!(program.is_ok(), true);
+        assert!(program.is_ok());
     }
 
     #[test]
@@ -430,6 +475,7 @@ mod tests {
         test: .asciiz 'This is a test'
         .wrong
         ";
+        // with wrong section now
         let program = asm.assemble(test_string);
         assert_eq!(program.is_ok(), false);
     }

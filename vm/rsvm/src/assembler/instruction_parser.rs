@@ -166,6 +166,16 @@ impl AssemblerInstruction {
             None => None,
         }
     }
+
+    pub(crate) fn get_i32_constant(&self) -> Option<i32> {
+        match &self.operand1 {
+            Some(token) => match token {
+                Token::IntegerOperand { value } => Some(value.clone()),
+                _ => None,
+            },
+            None => None,
+        }
+    }
 }
 
 #[cfg(test)]

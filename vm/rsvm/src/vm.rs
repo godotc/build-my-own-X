@@ -1,4 +1,3 @@
-use core::slice;
 use std::{io::Cursor, vec};
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -8,7 +7,7 @@ use crate::{
     instruction::Opcode,
 };
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct VM {
     pub registers: [i32; 32],
     pc: usize, // program counter
@@ -257,6 +256,7 @@ impl VM {
     }
 
     pub fn get_header_offset() -> usize {
+        // 4 bytes of pie header | ...64 empty | 4b for code start -> currently 64+4
         PIE_HEADER_LENGTH + 4
     }
 

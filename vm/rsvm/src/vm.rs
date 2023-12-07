@@ -1,6 +1,8 @@
+use chrono::prelude::*;
 use std::{io::Cursor, vec};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use uuid::Uuid;
 
 use crate::{
     assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX},
@@ -8,7 +10,25 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
+pub enum VMEventType {
+    Start,
+    GracefulStop { code: u32 },
+    Crash,
+    Stop,
+}
+
+#[derive(Debug, Clone)]
+pub struct VMEvent {
+    event: VMEventType,
+    at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
 pub struct VM {
+    /// A unique idenfier of each VM isolate
+    id: Uuid,
+    events: Vec<VMEvent>,
+
     pub registers: [i32; 32],
     pc: usize, // program counter
     pub program: Vec<u8>,
@@ -29,6 +49,8 @@ impl VM {
             remainder: 0,
             equal_flag: false,
             ro_data: vec![],
+            id: Uuid::new_v4(),
+            events: vec![],
         }
     }
 
@@ -39,21 +61,24 @@ impl VM {
     }
 
     pub fn run(&mut self) -> u32 {
-        //-> Option<u32> {
-        let mut is_done = false;
+        self.events.push(VMEvent::new(VMEventType::Start));
 
         if !self.verify_hader() {
-            // todo: events
+            self.events.push(VMEvent::new(VMEventType::Crash));
             error!("Header was incorrect");
             return 1; //Some(1);
         }
 
         self.pc = VM::get_header_offset() + self.get_starting_offset();
 
-        while !is_done {
+        let mut is_done = None;
+        while is_done.is_none() {
             is_done = self.execute_instructions();
         }
 
+        self.events.push(VMEvent::new(VMEventType::GracefulStop {
+            code: is_done.unwrap(),
+        }));
         0 //Some(0)
     }
 
@@ -68,9 +93,9 @@ impl VM {
         self.program.append(&mut bytes);
     }
 
-    fn execute_instructions(&mut self) -> bool {
+    fn execute_instructions(&mut self) -> Option<u32> {
         if self.pc >= self.program.len() {
-            return true;
+            return Some(1);
         }
 
         match self.decode_opcode() {
@@ -196,18 +221,22 @@ impl VM {
 
             Opcode::HLT => {
                 println!("HLT encountered");
-                return true;
+                return None;
             }
 
+            // Opcode::IGL => {
+            //     println!("Illegal instruction encounterd");
+            //     return 1;
+            // }
             _ => {
                 println!(
                     "Unrecognized opcode: {} found! Terminating!",
                     self.program[self.pc]
                 );
-                return true;
+                return None;
             }
         }
-        false
+        None
     }
 
     fn decode_opcode(&mut self) -> Opcode {
@@ -266,6 +295,15 @@ impl VM {
     }
 }
 
+impl VMEvent {
+    fn new(event_type: VMEventType) -> VMEvent {
+        VMEvent {
+            event: event_type,
+            at: Utc::now(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -282,7 +320,7 @@ mod tests {
     #[test]
     fn test_opcode_hlt() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![99, 0, 0, 0];
+        let test_bytes = vec![Opcode::HLT.into(), 0, 0, 0];
         test_vm.program = VM::prepend_header(test_bytes);
         test_vm.run();
         assert_eq!(test_vm.pc, VM::get_header_offset() + 1);

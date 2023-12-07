@@ -67,6 +67,7 @@ impl AssemblerInstruction {
             }
         }
 
+        // TODO & FIXME: load $0 100 will assume as load $0 None None, and the asembled result will be load $0 0 0, and will be think of valid
         for operand in &[&self.operand1, &self.operand2, &self.operand3] {
             if let Some(token) = operand {
                 AssemblerInstruction::extract_operand(token, &mut ret, symbols);

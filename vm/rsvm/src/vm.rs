@@ -221,7 +221,7 @@ impl VM {
 
             Opcode::HLT => {
                 println!("HLT encountered");
-                return None;
+                return Some(1);
             }
 
             // Opcode::IGL => {
@@ -233,7 +233,7 @@ impl VM {
                     "Unrecognized opcode: {} found! Terminating!",
                     self.program[self.pc]
                 );
-                return None;
+                return Some(1);
             }
         }
         None

@@ -13,7 +13,7 @@ use crate::{
 pub enum VMEventType {
     Start,
     GracefulStop { code: u32 },
-    Crash,
+    Crash { code: u32 },
     Stop,
 }
 
@@ -21,6 +21,7 @@ pub enum VMEventType {
 pub struct VMEvent {
     event: VMEventType,
     at: DateTime<Utc>,
+    application_id: Uuid,
 }
 
 #[derive(Debug, Clone)]
@@ -60,26 +61,36 @@ impl VM {
         vm
     }
 
-    pub fn run(&mut self) -> u32 {
-        self.events.push(VMEvent::new(VMEventType::Start));
+    pub fn run(&mut self) -> Vec<VMEvent> {
+        self.events
+            .push(VMEvent::new(VMEventType::Start, self.id.clone()));
 
+        // check header
         if !self.verify_hader() {
-            self.events.push(VMEvent::new(VMEventType::Crash));
+            self.events.push(VMEvent::new(
+                VMEventType::Crash { code: 1 },
+                self.id.clone(),
+            ));
             error!("Header was incorrect");
-            return 1; //Some(1);
+            return self.events.clone();
         }
 
         self.pc = VM::get_header_offset() + self.get_starting_offset();
 
+        // run
         let mut is_done = None;
         while is_done.is_none() {
             is_done = self.execute_instructions();
         }
 
-        self.events.push(VMEvent::new(VMEventType::GracefulStop {
-            code: is_done.unwrap(),
-        }));
-        0 //Some(0)
+        // over
+        self.events.push(VMEvent::new(
+            VMEventType::GracefulStop {
+                code: is_done.unwrap(),
+            },
+            self.id.clone(),
+        ));
+        self.events.clone()
     }
 
     pub fn run_once(&mut self) {
@@ -296,10 +307,11 @@ impl VM {
 }
 
 impl VMEvent {
-    fn new(event_type: VMEventType) -> VMEvent {
+    fn new(event_type: VMEventType, application_id: Uuid) -> VMEvent {
         VMEvent {
             event: event_type,
             at: Utc::now(),
+            application_id,
         }
     }
 }
@@ -438,4 +450,5 @@ mod tests {
         vm.program = vec![Opcode::PRTS.into(), 0, 0, 0];
         vm.run_once();
     }
+    //
 }

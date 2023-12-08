@@ -20,7 +20,12 @@ fn main() {
             match program {
                 Ok(p) => {
                     vm.add_bytes(p);
-                    vm.run();
+                    let events = vm.run();
+                    println!("VM Events...");
+                    println!("-----------------------------------------");
+                    for ev in &events {
+                        println!("{:#?}", ev);
+                    }
                     std::process::exit(0);
                 }
                 Err(_) => {}

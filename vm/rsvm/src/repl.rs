@@ -28,8 +28,8 @@ impl Default for REPL {
 impl REPL {
     pub fn new() -> REPL {
         REPL {
-            command_buffer: vec![],
             vm: VM::new(),
+            command_buffer: vec![],
             asm: Assembler::new(),
             scheduler: Scheduler::new(),
         }

@@ -296,8 +296,7 @@ impl VM {
         for byte in PIE_HEADER_PREFIX {
             prepension.push(byte.clone());
         }
-        // 4 bytes for telling the vm code starting offset
-        while prepension.len() < PIE_HEADER_LENGTH + 4 {
+        while prepension.len() < PIE_HEADER_LENGTH {
             prepension.push(0);
         }
         prepension.append(&mut b);
@@ -306,11 +305,18 @@ impl VM {
 
     pub fn get_header_offset() -> usize {
         // 4 bytes of pie header | ...64 empty | 4b for code start -> currently 64+4
-        PIE_HEADER_LENGTH + 4
+        // PIE_HEADER_LENGTH + 4
+
+        // write the start offset at 4 now (after PIE_HEADER_PREFIX)
+        PIE_HEADER_LENGTH
     }
 
     fn get_starting_offset(&self) -> usize {
-        let mut cursor = Cursor::new(&self.program[64..68]);
+        // let mut cursor = Cursor::new(&self.program[64..68]);
+        // cursor.read_u32::<LittleEndian>().unwrap() as usize
+
+        // write the start offset at 4 now (after PIE_HEADER_PREFIX)
+        let mut cursor = Cursor::new(&self.program[4..8]);
         cursor.read_u32::<LittleEndian>().unwrap() as usize
     }
 }

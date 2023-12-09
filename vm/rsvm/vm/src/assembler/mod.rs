@@ -186,13 +186,15 @@ impl Assembler {
             .iter()
             .for_each(|b| header.push(b.clone()));
 
+        // directly write the start point after the header 4 bytes
+        let mut wtr: Vec<u8> = vec![];
+        wtr.write_u32::<LittleEndian>(self.ro.len() as u32).unwrap();
+        header.append(&mut wtr);
+
         while header.len() < PIE_HEADER_LENGTH {
             header.push(0);
         }
 
-        let mut wtr: Vec<u8> = vec![];
-        wtr.write_u32::<LittleEndian>(self.ro.len() as u32).unwrap();
-        header.append(&mut wtr);
         header
     }
 
@@ -420,9 +422,8 @@ mod tests {
         hlt
         ";
         let program = asm.assemble(test_string);
-        assert_eq!(program.is_ok(), true);
-        let unwrapped = program.unwrap();
-        assert_eq!(unwrapped[64], 6);
+        assert!(program.is_ok());
+        assert_eq!(program.unwrap()[PIE_HEADER_PREFIX.len()], 6);
     }
 
     #[test]

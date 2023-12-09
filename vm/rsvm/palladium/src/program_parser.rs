@@ -1,5 +1,5 @@
 use super::{expression_parser::expression, token::Token};
-use nom::{do_parse, many1, named, types::CompleteStr, ws};
+use nom::{named, types::CompleteStr, ws};
 
 named!(pub program<CompleteStr, Token>,
     ws!(

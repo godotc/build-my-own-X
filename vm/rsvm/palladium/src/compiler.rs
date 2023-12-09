@@ -23,13 +23,6 @@ impl Compiler {
             assembly: vec![],
         }
     }
-
-    fn requset_free_reg(&mut self) -> u8 {
-        self.free_registers.pop().unwrap()
-    }
-    fn release_used_reg(&mut self) -> u8 {
-        self.used_registers.pop().unwrap()
-    }
 }
 
 impl Visitor for Compiler {
@@ -37,9 +30,9 @@ impl Visitor for Compiler {
         match node {
             Token::AdditionOperator => {
                 println!("Visiting AdditionOperator");
-                let result_reg = self.requset_free_reg();
-                let left_reg = self.release_used_reg();
-                let right_reg = self.release_used_reg();
+                let result_reg = self.free_registers.pop().unwrap();
+                let left_reg = self.used_registers.pop().unwrap();
+                let right_reg = self.used_registers.pop().unwrap();
                 let line = format!("ADD ${} ${} ${}", left_reg, right_reg, result_reg);
                 self.assembly.push(line);
                 self.free_registers.push(left_reg);
@@ -50,9 +43,9 @@ impl Visitor for Compiler {
             Token::DivisionOperator => todo!(),
             Token::Integer { value } => {
                 println!("Visited integer: {:#?}", value);
-                let next_reg = self.requset_free_reg();
+                let next_reg = self.free_registers.pop().unwrap();
+                self.used_registers.push(next_reg);
                 let line = format!("LOAD ${} #{}", next_reg, value);
-                self.release_used_reg();
                 self.assembly.push(line);
             }
 

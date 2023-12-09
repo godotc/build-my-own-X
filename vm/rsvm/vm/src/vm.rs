@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use std::{io::Cursor, vec};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use rand::Rng;
 use uuid::Uuid;
 
 use crate::{
@@ -53,6 +54,14 @@ impl VM {
             id: Uuid::new_v4(),
             events: vec![],
         }
+    }
+    pub fn new_with_non_zero_registers() -> VM {
+        let mut vm = VM::new();
+        let mut rng = rand::thread_rng();
+        vm.registers
+            .iter_mut()
+            .for_each(|register| *register = rng.gen_range(1, 100));
+        vm
     }
 
     pub fn new_with_header() -> VM {
@@ -318,6 +327,10 @@ impl VMEvent {
 
 #[cfg(test)]
 mod tests {
+    use nom::print;
+
+    use crate::assembler::register_parsers::register;
+
     use super::*;
     use std::vec;
 
@@ -440,6 +453,18 @@ mod tests {
         vm.registers[1] = 2;
         vm.run();
         assert_eq!(vm.registers[2], 50)
+    }
+
+    #[test]
+    fn test_opcode_div() {
+        let mut vm = VM::new();
+        vm.program = vec![Opcode::DIV.into(), 0, 1, 2];
+        vm.registers[0] = 25;
+        vm.registers[1] = 2;
+        vm.run_once();
+        // vm.registers.iter().for_each(|reg| print!("{}", reg));
+        // println!();
+        assert_eq!(vm.registers[2], 12)
     }
 
     #[test]

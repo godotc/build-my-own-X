@@ -1,11 +1,15 @@
 [package]
-name = "rsvm"
+name = "vm"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-opt-level = 1
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
 
 [dependencies]
 chrono = "*"
@@ -15,3 +19,11 @@ log = "0.4"
 env_logger = "0.5.13"
 byteorder = "1"
 uuid = { version = "0.7", features = ["v4"] }
+rand = "*"
+
+[[bench]]
+name = "vm_bench"
+harness = false
+
+[dev-dependencies]
+criterion = "0.2"

@@ -2,7 +2,8 @@ use std::{fs::File, io::Read, path::Path};
 
 use clap::{load_yaml, App};
 use log::info;
-use rsvm::{assembler, repl, vm};
+use vm::vm::VM;
+use vm::{assembler, repl};
 
 fn main() {
     env_logger::init();
@@ -14,7 +15,7 @@ fn main() {
         Some(filename) => {
             let program = read_file(filename);
             let mut asm = assembler::Assembler::new();
-            let mut vm = vm::VM::new();
+            let mut vm = VM::new();
 
             let program = asm.assemble(&program);
             match program {

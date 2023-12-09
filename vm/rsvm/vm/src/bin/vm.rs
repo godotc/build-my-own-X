@@ -8,14 +8,32 @@ use vm::{assembler, repl};
 fn main() {
     env_logger::init();
     info!("Starting logging!");
-    let yaml = load_yaml!("../cfg/cli.yml");
+    let yaml = load_yaml!("cli.yml");
     let mathches = App::from_yaml(yaml).get_matches();
+
     let target_file = mathches.value_of("INPUT_FILE");
+
+    let num_threads = match mathches.value_of("THREADS") {
+        Some(num) => match num.parse::<usize>() {
+            Ok(v) => v,
+            Err(_e) => {
+                let default = num_cpus::get();
+                println!(
+                    "Invalid argmument for number of threads: {}. using default dtected: {}.",
+                    num, default
+                );
+                default
+            }
+        },
+        None => num_cpus::get(),
+    };
+
     match target_file {
         Some(filename) => {
             let program = read_file(filename);
             let mut asm = assembler::Assembler::new();
             let mut vm = VM::new();
+            vm.logical_cores = num_threads;
 
             let program = asm.assemble(&program);
             match program {

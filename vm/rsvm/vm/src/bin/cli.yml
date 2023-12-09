@@ -1,0 +1,15 @@
+name: iridium
+version: "0.0.1"
+author: None
+about: Hehehehe
+args:
+    - INPUT_FILE:
+          help: Path to the .iasm or .ir file to run
+          required: false
+          index: 1
+    - THREADS:
+          help: Number of OS threads the VM will utilize
+          required: false
+          takes_value: true
+          long: threads
+          short: t

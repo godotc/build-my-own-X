@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "vm"
+
 [profile.dev]
 opt-level = 0
 
@@ -20,6 +23,7 @@ env_logger = "0.5.13"
 byteorder = "1"
 uuid = { version = "0.7", features = ["v4"] }
 rand = "*"
+num_cpus = "1.16.0"
 
 [[bench]]
 name = "vm_bench"

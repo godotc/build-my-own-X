@@ -1,9 +1,0 @@
-name: iridium
-version: "0.0.1"
-author: None
-about: Hehehehe
-args:
-  - INPUT_FILE:
-      help: Path to the .iasm or .ir file to run
-      required: false
-      index: 1

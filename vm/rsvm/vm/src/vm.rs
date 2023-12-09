@@ -31,6 +31,7 @@ pub struct VM {
     id: Uuid,
     events: Vec<VMEvent>,
 
+    pub logical_cores: usize,
     pub registers: [i32; 32],
     pc: usize, // program counter
     pub program: Vec<u8>,
@@ -44,6 +45,7 @@ pub struct VM {
 impl VM {
     pub fn new() -> VM {
         VM {
+            logical_cores: num_cpus::get(),
             registers: [0; 32],
             pc: 0,
             program: vec![],

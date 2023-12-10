@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use std::{fs::File, io::Read, path::Path};
 
+use chrono::Duration;
 use clap::{load_yaml, App};
 use log::info;
 use vm::vm::VM;
@@ -9,11 +11,28 @@ fn main() {
     env_logger::init();
     info!("Starting logging!");
     let yaml = load_yaml!("cli.yml");
-    let mathches = App::from_yaml(yaml).get_matches();
+    let matches = App::from_yaml(yaml).get_matches();
 
-    let target_file = mathches.value_of("INPUT_FILE");
+    if matches.is_present("add-ssh-key") {
+        println!("User tried to add SSH key!");
+        std::process::exit(0);
+    }
 
-    let num_threads = match mathches.value_of("THREADS") {
+    if matches.is_present("ENABLE_SSH") {
+        println!("User wants to enable SSH!");
+        if matches.is_present("SSH_PORT") {
+            let port = match matches.value_of("ssh_port") {
+                Some(p) => p,
+                None => 2223,
+            };
+            println!("They'd like to use port {:#?}", port);
+            start_ssh_server(port)
+        }
+    }
+
+    let target_file = matches.value_of("INPUT_FILE");
+
+    let num_threads = match matches.value_of("THREADS") {
         Some(num) => match num.parse::<usize>() {
             Ok(v) => v,
             Err(_e) => {
@@ -78,4 +97,15 @@ fn read_file(tmp: &str) -> String {
             std::process::exit(1);
         }
     }
+}
+
+fn start_ssh_server(port: u32) {
+    let _t = std::thread::spawn(|| {
+        let mut config = thrussh::server::Config::default();
+        config.connection_timeout = Some(std::time::Duration::from_secs(500));
+        config.auth_rejection_time = std::time::Duration::from_secs(3);
+        let config = Arc::new(config);
+        let sh = vm::ssh::Server {};
+        thrussh::server::run(config, format!("127.0.0.1:{}", port).as_str(), sh);
+    });
 }

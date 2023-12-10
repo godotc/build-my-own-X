@@ -2,7 +2,6 @@ pub mod command_parser;
 
 use std::{
     fs::File,
-    hash::BuildHasher,
     io::{self, Read, Write},
     num::ParseIntError,
     path::Path,

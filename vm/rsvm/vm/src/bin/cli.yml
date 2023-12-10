@@ -3,13 +3,34 @@ version: "0.0.1"
 author: None
 about: Hehehehe
 args:
-    - INPUT_FILE:
-          help: Path to the .iasm or .ir file to run
-          required: false
-          index: 1
-    - THREADS:
-          help: Number of OS threads the VM will utilize
-          required: false
-          takes_value: true
-          long: threads
-          short: t
+      - INPUT_FILE:
+              help: Path to the .iasm or .ir file to run
+              required: false
+              index: 1
+      - THREADS:
+              help: Number of OS threads the VM will utilize
+              required: false
+              takes_value: true
+              long: threads
+              short: t
+      - ENABLE_SSH:
+              help: Enables the SSH serer component of Irdium VM
+              required: false
+              takes_value: false
+              long: enable_ssh
+      - SSH_PORT:
+              help: The port listen for ssh connections
+              required: false
+              takes_value: true
+              long: ssh_port
+              short: p
+subcommands:
+      - add-ssh-keys:
+        about: Adds a public key to the list of keys authorized to access this VM remotely
+        version: "0.0.1"
+        author: Fletcher Haynes <fletcher@subnetzero.io>
+        args:
+              - PUB_KEY_FILE:
+                      help: Path to the file containing the public key
+                      index: 1
+                      required: true

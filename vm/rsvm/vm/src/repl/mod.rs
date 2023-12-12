@@ -1,10 +1,13 @@
 pub mod command_parser;
 
 use std::{
+    fmt::format,
     fs::File,
     io::{self, Read, Write},
     num::ParseIntError,
     path::Path,
+    sync::mpsc,
+    sync::mpsc::{Receiver, Sender},
 };
 
 use crate::{
@@ -15,12 +18,19 @@ use crate::{
 
 use self::command_parser::CommandParser;
 
-#[derive(Debug, Clone)]
+pub static REMOTE_BANNER: &'static str = "Welcome to Irdium! Let's be productive!";
+pub static PROMPT: &'static str = "it> ";
+pub static COMMAND_PREFIX: &'static str = "!";
+
+#[derive(Debug)]
 pub struct REPL {
     command_buffer: Vec<String>,
     vm: VM,
     asm: Assembler,
     scheduler: Scheduler,
+
+    pub tx_pipe: Option<Box<Sender<String>>>,
+    pub rx_pipe: Option<Box<Receiver<String>>>,
 }
 
 impl Default for REPL {
@@ -31,22 +41,25 @@ impl Default for REPL {
 
 impl REPL {
     pub fn new() -> REPL {
+        let (tx, rx): (Sender<_>, Receiver<_>) = mpsc::channel();
         REPL {
             vm: VM::new(),
             command_buffer: vec![],
             asm: Assembler::new(),
             scheduler: Scheduler::new(),
+            tx_pipe: Some(Box::new(tx)),
+            rx_pipe: Some(Box::new(rx)),
         }
     }
 
     pub fn run(&mut self) -> ! {
-        println!("Weclcome to the vm loop!");
+        println!("{}", REMOTE_BANNER.to_string());
 
         let stdin = io::stdin();
         loop {
             let mut buffer = String::new();
 
-            print!("it> ");
+            print!("{}", PROMPT.to_string());
             io::stdout().flush().expect("Unable to flush stdout");
 
             stdin
@@ -56,13 +69,13 @@ impl REPL {
             let history_copy = buffer.clone();
             self.command_buffer.push(history_copy);
 
-            if buffer.starts_with("!") {
+            if buffer.starts_with(COMMAND_PREFIX) {
                 self.execute_command(&buffer);
             } else {
                 let program = match program(nom::types::CompleteStr(&buffer)) {
                     Ok((_, program)) => program,
                     Err(_) => {
-                        println!("Unable to  parse input");
+                        self.send_message(format!("Unable to  parse input"));
                         continue;
                     }
                 };
@@ -70,6 +83,26 @@ impl REPL {
                     .program
                     .append(&mut program.to_bytes(&self.asm.symbols));
                 self.vm.run_once();
+            }
+        }
+    }
+
+    pub fn run_single(&mut self, buffer: &str) -> Option<String> {
+        if buffer.starts_with(COMMAND_PREFIX) {
+            self.execute_command(&buffer);
+            return None;
+        }
+
+        match program(nom::types::CompleteStr(&buffer)) {
+            Ok((_, program)) => {
+                let mut bytes = program.to_bytes(&self.asm.symbols);
+                self.vm.program.append(&mut bytes);
+                self.vm.run_once();
+                None
+            }
+            Err(e) => {
+                self.send_message(format!("Unable to  parse input : {:?}", e));
+                None
             }
         }
     }
@@ -90,84 +123,110 @@ impl REPL {
         }
     }
 
-    fn quit(&mut self, args: &[&str]) {
-        println!("Farewell!");
+    fn quit(&mut self, _args: &[&str]) {
+        self.send_message(format!("Farewell! Have a great day!"));
         std::process::exit(0);
     }
 
-    fn history(&mut self, args: &[&str]) {
-        for cmd in &self.command_buffer {
-            println!("{}", cmd);
+    fn history(&mut self, _args: &[&str]) {
+        let mut results = vec![];
+        for command in &self.command_buffer {
+            results.push(command.clone());
         }
+        self.send_message(format!("{:#?}", results));
+        self.send_prompt();
     }
 
-    fn program(&mut self, args: &[&str]) {
-        println!("Listing instructions currently in VM's program vector:");
+    fn program(&mut self, _args: &[&str]) {
+        self.send_message(format!(
+            "Listing instructions currently in VM's program vector:"
+        ));
+        let mut results = vec![];
         for instruction in &self.vm.program {
-            println!("{}", instruction);
+            results.push(instruction.clone())
         }
-        println!("End of Program Listing");
+        self.send_message(format!("{:#?}", results));
+        self.send_message(format!("End of Program Listing"));
+        self.send_prompt();
     }
 
-    fn registers(&mut self, args: &[&str]) {
-        println!("Listing registers currently in VM's register vector:");
-        println!("{:#?}", self.vm.registers);
-        println!("End of Register Listing");
+    fn registers(&mut self, _args: &[&str]) {
+        self.send_message(format!("Listing registers and all contents:"));
+        let mut results = vec![];
+        for register in &self.vm.registers {
+            results.push(register.clone());
+        }
+        self.send_message(format!("{:#?}", results));
+        self.send_message(format!("End of Register Listing"));
+        self.send_prompt();
     }
 
-    fn clear_program(&mut self, args: &[&str]) {
-        println!("Removing all bytes from VM's program vector...");
-        self.vm.program.truncate(0);
-        println!("Done!");
+    fn clear_program(&mut self, _args: &[&str]) {
+        self.send_message(format!("Clearing all program.."));
+        self.vm.program.clear();
+        self.send_message(format!("Done!"));
+        self.send_prompt();
     }
 
-    fn clear_registers(&mut self, args: &[&str]) {
-        println!("Clear all registers...");
-        self.vm.registers = self.vm.registers.map(|_| 0);
-        println!("Done!");
+    fn clear_registers(&mut self, _args: &[&str]) {
+        self.send_message(format!("Setting all registers to 0"));
+        for i in 0..self.vm.registers.len() {
+            self.vm.registers[i] = 0;
+        }
+        self.send_message(format!("Done!"));
+        self.send_prompt();
     }
 
-    fn symbols(&mut self, args: &[&str]) {
-        println!("Listing symbols table:");
-        println!("{:#?}", self.asm.symbols);
-        println!("End of Symbols Listing");
+    fn symbols(&mut self, _args: &[&str]) {
+        let mut results = vec![];
+        for symbol in &self.asm.symbols.symbols {
+            results.push(symbol.clone());
+        }
+        self.send_message(format!("Listing symbols table:"));
+        self.send_message(format!("{:#?}", results));
+        self.send_message(format!("End of Symbols Listing"));
+        self.send_prompt();
     }
 
-    fn load_file(&mut self, args: &[&str]) {
-        match self.get_data_from_load() {
-            Some(content) => match self.asm.assemble(&content) {
-                Ok(mut assembled_program) => {
-                    println!("Sending assembled program to VM");
-                    self.vm.program.append(&mut assembled_program);
-                    println!("{:#?}", self.vm.program);
-                    self.vm.run();
-                }
-                Err(errors) => {
-                    for err in errors {
-                        println!("Unable to parse input: {}", err);
+    fn load_file(&mut self, _args: &[&str]) {
+        let raw_content = self.get_data_from_load();
+        match raw_content {
+            Some(raw_content) => {
+                let contents = self.asm.assemble(&raw_content);
+                match contents {
+                    Ok(mut assembled_program) => {
+                        self.send_message(format!("Sending assembled program to VM"));
+                        self.vm.program.append(&mut assembled_program);
+                        self.vm.run();
                     }
-                    return;
+                    Err(errors) => {
+                        for error in errors {
+                            self.send_message(format!("Unable to parse input: {}", error));
+                            self.send_prompt();
+                        }
+                    }
                 }
-            },
-            None => return,
+            }
+            None => {}
         }
     }
 
-    fn spawn(&mut self, args: &[&str]) {
+    fn spawn(&mut self, _args: &[&str]) {
         let contents = self.get_data_from_load();
         if contents.is_none() {
             return;
         }
         match self.asm.assemble(&contents.unwrap()) {
             Ok(mut assembled_program) => {
-                println!("Sending assembled program to VM");
+                self.send_message(format!("Sending assembled program to VM"));
                 self.vm.program.append(&mut assembled_program);
                 println!("{:#?}", self.vm.program);
                 self.scheduler.get_thread(self.vm.clone());
             }
             Err(errors) => {
                 for err in errors {
-                    println!("Unable to parse input: {}", err);
+                    self.send_message(format!("Unable to parse input: {}", err));
+                    self.send_prompt();
                 }
                 return;
             }
@@ -226,6 +285,23 @@ impl REPL {
                 println!("Error on reading this file: {:?}", e);
                 None
             }
+        }
+    }
+
+    pub fn send_message(&mut self, msg: String) {
+        match &self.tx_pipe {
+            Some(pipe) => {
+                pipe.send(msg + "\n");
+            }
+            None => {}
+        }
+    }
+    pub fn send_prompt(&mut self) {
+        match &self.tx_pipe {
+            Some(pipe) => {
+                pipe.send(PROMPT.to_owned());
+            }
+            None => {}
         }
     }
 }

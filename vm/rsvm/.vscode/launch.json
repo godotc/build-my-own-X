@@ -44,16 +44,36 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'rsvm'",
+            "name": "VM remote server",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=vm",
+                    "--package=vm"
+                ],
+                "filter": {
+                    "name": "vm",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--enable-remote-access"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'vm'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=rsvm",
-                    "--package=rsvm"
+                    "--bin=vm",
+                    "--package=vm"
                 ],
                 "filter": {
-                    "name": "rsvm",
+                    "name": "vm",
                     "kind": "bin"
                 }
             },

@@ -1,0 +1,44 @@
+Program {
+    expressions: [
+        Expression {
+            left: Term {
+                left: Factor {
+                    value: Expression {
+                        left: Term {
+                            left: Factor {
+                                value: Integer {
+                                    value: 4,
+                                },
+                            },
+                            right: [
+                                (
+                                    MultiplicationOperator,
+                                    Factor {
+                                        value: Integer {
+                                            value: 3,
+                                    },
+                                },
+                                ),
+                            ],
+                        },
+                        right: [],
+                    },
+                },
+                right: [],
+            },
+            right: [
+                (
+                    SubtractionOperator,
+                    Term {
+                        left: Factor {
+                            value: Integer {
+                                value: 1,
+                        },
+                    },
+                        right: [],
+                },
+                ),
+            ],
+        },
+    ],
+}

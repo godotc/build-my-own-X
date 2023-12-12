@@ -6,14 +6,14 @@ named!(pub operator<CompleteStr, Token>,
     ws!(
         alt!(
             addition_operator|
-            subtraction_operator|
+            substraction_operator|
             multiplication_operator|
             division_operator
         )
     )
 );
 
-named!(addition_operator<CompleteStr, Token>,
+named!(pub addition_operator<CompleteStr, Token>,
     ws!(
         do_parse!(
             tag!("+") >>
@@ -24,34 +24,34 @@ named!(addition_operator<CompleteStr, Token>,
     )
 );
 
-named!(subtraction_operator<CompleteStr, Token>,
+named!(pub substraction_operator<CompleteStr, Token>,
     ws!(
         do_parse!(
             tag!("-") >>
             (
-                Token::AdditionOperator
+                Token::SubtractionOperator
             )
         )
     )
 );
 
-named!(multiplication_operator<CompleteStr, Token>,
+named!(pub multiplication_operator<CompleteStr, Token>,
     ws!(
         do_parse!(
             tag!("*") >>
             (
-                Token::AdditionOperator
+                Token::MultiplicationOperator
             )
         )
     )
 );
 
-named!(division_operator<CompleteStr, Token>,
+named!(pub division_operator<CompleteStr, Token>,
     ws!(
         do_parse!(
             tag!("/") >>
             (
-                Token::AdditionOperator
+                Token::DivisionOperator
             )
         )
     )

@@ -1,4 +1,4 @@
-use super::{expression_parser::expression, token::Token};
+use super::{expression_parser::expression, Token};
 use nom::{named, types::CompleteStr, ws};
 
 named!(pub program<CompleteStr, Token>,

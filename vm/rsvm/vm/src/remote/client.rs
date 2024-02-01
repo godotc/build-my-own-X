@@ -1,6 +1,6 @@
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
-use std::thread::{self, sleep};
+use std::thread::{self};
 
 use crate::repl;
 
@@ -16,7 +16,7 @@ impl Client {
         // TODO: Handle this better
         let reader = stream.try_clone().unwrap();
         let writer = stream.try_clone().unwrap();
-        let mut repl = repl::REPL::new();
+        let repl = repl::REPL::new();
 
         Client {
             reader: BufReader::new(reader),
@@ -34,7 +34,11 @@ impl Client {
         loop {
             match self.reader.read_line(&mut buf) {
                 Ok(_) => {
-                    buf.trim_end();
+                    // Here check the trim_end will change it self or not
+                    // let cloned = buf.clone();
+                    let _ = buf.trim_end();
+                    // assert!(cloned != buf);
+
                     self.repl.run_single(&buf);
                     buf.clear();
                 }
@@ -73,10 +77,12 @@ impl Client {
             loop {
                 match chan.recv() {
                     Ok(msg) => {
-                        writer.write_all(msg.as_bytes());
-                        writer.flush();
+                        let _ = writer.write_all(msg.as_bytes());
+                        let _ = writer.flush();
                     }
-                    Err(e) => {}
+                    Err(e) => {
+                        println!("Error: {:#?}", e);
+                    }
                 }
             }
         });

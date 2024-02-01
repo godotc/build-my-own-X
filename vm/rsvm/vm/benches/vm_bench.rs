@@ -3,7 +3,6 @@ extern crate criterion;
 extern crate vm;
 
 use criterion::Criterion;
-use vm::assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX};
 use vm::vm::VM;
 
 mod arithmetic {

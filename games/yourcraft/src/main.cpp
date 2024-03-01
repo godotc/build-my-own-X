@@ -11,9 +11,126 @@
 #include <glad/glad.h>
 #include <stdio.h>
 
+#include "shader.h"
+
 static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+
+struct Triangle {
+
+    GLuint VAO = 0;
+    GLuint VBO = 0;
+    GLuint IBO = 0;
+
+
+
+    void init()
+    {
+        // glCreateVertexArrays(1, &VAO);
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+        {
+
+            glGenBuffers(1, &VBO);
+            float points[3][3] = {
+                {-0.5, -0.5, 0},
+                { 0.5, -0.5, 0},
+                { 0.0,  0.5, 0},
+            };
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+
+            // index 0 as the input vertex points
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 9, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *)0);
+
+            glGenBuffers(1, &IBO);
+            float indices[] = {0, 1, 2};
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+        }
+        glBindVertexArray(0);
+    }
+
+    void bind()
+    {
+        glBindVertexArray(VAO);
+    }
+    void unbind()
+    {
+        glBindVertexArray(0);
+    }
+
+    void update()
+    {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
+    }
+
+    ~Triangle()
+    {
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &IBO);
+        glDeleteVertexArrays(1, &VAO);
+    }
+};
+
+
+static void gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+
+    // FIXME: avoid noise, too many ouput info
+    if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+        return;
+    }
+
+    using std::cout, std::endl;
+    cout << "---------------------opengl-callback-start------------" << endl;
+    cout << "message: " << message << endl;
+    cout << "type: ";
+    switch (type) {
+    case GL_DEBUG_TYPE_ERROR:
+        cout << "ERROR";
+        break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+        cout << "DEPRECATED_BEHAVIOR";
+        break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+        cout << "UNDEFINED_BEHAVIOR";
+        break;
+    case GL_DEBUG_TYPE_PORTABILITY:
+        cout << "PORTABILITY";
+        break;
+    case GL_DEBUG_TYPE_PERFORMANCE:
+        cout << "PERFORMANCE";
+        break;
+    case GL_DEBUG_TYPE_OTHER:
+        cout << "OTHER";
+        break;
+    }
+    cout << endl;
+
+    cout << "id: " << id << endl;
+    cout << "severity: ";
+    switch (severity) {
+    case GL_DEBUG_SEVERITY_NOTIFICATION:
+        cout << "NOTIFICATION";
+        break;
+    case GL_DEBUG_SEVERITY_LOW:
+        cout << "LOW";
+        break;
+    case GL_DEBUG_SEVERITY_MEDIUM:
+        cout << "MEDIUM";
+        break;
+    case GL_DEBUG_SEVERITY_HIGH:
+        cout << "HIGH";
+        break;
+    }
+    cout << endl;
+    cout << "---------------------opengl-callback-end--------------" << endl;
 }
 
 int main(int, char **)
@@ -25,9 +142,9 @@ int main(int, char **)
     glfwSetErrorCallback(glfw_error_callback);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
     if (window == nullptr) {
@@ -40,10 +157,16 @@ int main(int, char **)
         return -1;
     }
 
+    // Notice: this is a specific driver extension
+    glEnable(GL_DEBUG_OUTPUT);
+    if (glDebugMessageCallback != nullptr) {
+        glDebugMessageCallback(gl_message_callback, nullptr);
+        printf("Bound GL debug callback successfully\n");
+    }
+    else {
+        printf("glDebugMessageCallback is nullptr. Maybe your driver is not supportting this extionsion!\n");
+    }
 
-    glfwSwapInterval(1); // Enable vsync
-
-    glm::vec4 clear_color{0, 0, 0, 1};
 
     // imgui inits
     IMGUI_CHECKVERSION();
@@ -64,6 +187,12 @@ int main(int, char **)
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 330");
     }
+
+    glfwSwapInterval(1); // Enable vsync
+    glm::vec4 clear_color{0, 0, 0, 1};
+    Triangle  tri;
+    tri.init();
+    auto shader = Shader::create("../asset/shader/default.glsl");
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -92,14 +221,18 @@ int main(int, char **)
                 glViewport(0, 0, w, h);
             }
 
+            shader->bind();
+            tri.bind();
+            tri.update();
+            // tri.unbind();
 
-            glPointSize(20.f);
+            // glPointSize(20.f);
 
-            glBegin(GL_POINTS);
-            glVertex3f(1, 1, 1);
-            glVertex3f(2, 2, 2);
-            glVertex3f(0.5, 0.5, 0.5);
-            glEnd();
+            // glBegin(GL_POINTS);
+            // glVertex3f(1, 1, 1);
+            // glVertex3f(2, 2, 2);
+            // glVertex3f(0.5, 0.5, 0.5);
+            // glEnd();
         }
 
         // imgui ends

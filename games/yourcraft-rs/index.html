@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>WGPU</title>
+	<style>
+		canvas {
+			background-color: black;
+		}
+
+	</style>
+</head>
+
+<body id="wgpu_test">
+	<script type="module">
+		import init from "./pkg/wgpu_test.js";
+		init().then(() => {
+			console.log("wasm loaded");
+		});
+	</script>
+</body>
+
+</html>

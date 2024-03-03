@@ -1,6 +1,0 @@
-[
-{
-  "directory": "G:\\ME\\build-my-own-X\\games\\yourcraft",
-  "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Tools\\MSVC\\14.40.33521\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/Zi", "/FS", "/Fdbin\\compile.yourcraft.pdb", "/Od", "/std:c++20", "/DGLFW_INCLUDE_NONE", "/EHsc", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\g\\glad\\v0.1.36\\d58ee23747ff411aae74b40986460499\\include", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\g\\glm\\0.9.9+8\\8335bab7c0314ab9921440de58961aac\\include", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\i\\imgui\\docking\\a6d52a9bcd274a8ba54570d6e36867ca\\include", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\i\\imgui\\docking\\a6d52a9bcd274a8ba54570d6e36867ca\\include\\imgui", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\i\\imgui\\docking\\a6d52a9bcd274a8ba54570d6e36867ca\\include\\backends", "/IC:\\Users\\longyuan\\AppData\\Local\\.xmake\\packages\\g\\glfw\\3.3.8\\d12e591897c9472fb7d3725fa5811388\\include", "/Fobuild\\.objs\\yourcraft\\windows\\x64\\debug\\src\\main.cpp.obj", "src\\main.cpp"],
-  "file": "src\\main.cpp"
-}]

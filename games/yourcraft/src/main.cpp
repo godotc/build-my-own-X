@@ -17,68 +17,6 @@ static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
-
-
-struct Triangle {
-
-    GLuint VAO = 0;
-    GLuint VBO = 0;
-    GLuint IBO = 0;
-
-
-
-    void init()
-    {
-        // glCreateVertexArrays(1, &VAO);
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-        {
-
-            glGenBuffers(1, &VBO);
-            float points[3][3] = {
-                {-0.5, -0.5, 0},
-                { 0.5, -0.5, 0},
-                { 0.0,  0.5, 0},
-            };
-            glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
-
-            // index 0 as the input vertex points
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 9, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *)0);
-
-            glGenBuffers(1, &IBO);
-            float indices[] = {0, 1, 2};
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-        }
-        glBindVertexArray(0);
-    }
-
-    void bind()
-    {
-        glBindVertexArray(VAO);
-    }
-    void unbind()
-    {
-        glBindVertexArray(0);
-    }
-
-    void update()
-    {
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
-    }
-
-    ~Triangle()
-    {
-        glDeleteBuffers(1, &VBO);
-        glDeleteBuffers(1, &IBO);
-        glDeleteVertexArrays(1, &VAO);
-    }
-};
-
-
 static void gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
 
@@ -133,13 +71,92 @@ static void gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum se
     cout << "---------------------opengl-callback-end--------------" << endl;
 }
 
+struct Cube {
+
+    void init()
+    {
+        float vertices[] = {
+            // first triangle
+            0.5f, 0.5f, 0.0f,   // top right
+            0.5f, -0.5f, 0.0f,  // bottom right
+            -0.5f, 0.5f, 0.0f,  // top left
+                                // second triangle
+            0.5f, -0.5f, 0.0f,  // bottom right
+            -0.5f, -0.5f, 0.0f, // bottom left
+            -0.5f, 0.5f, 0.0f   // top left
+        };
+    }
+};
+
+struct Triangle {
+
+    GLuint VAO = 0;
+    GLuint VBO = 0;
+    GLuint EBO = 0;
+
+    const float points[4][3] = {
+        {-0.5, -0.5, 0},
+        { 0.5, -0.5, 0},
+        { 0.0,  0.5, 0},
+        { 0.5,  0.5, 0},
+    };
+
+    float indices[2][3] = {
+        {0, 1, 2},
+        {2, 1, 3}
+    };
+
+
+    Triangle()
+    {
+        // glCreateVertexArrays(1, &VAO);
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+        {
+            GL_CALL(glGenBuffers(1, &VBO));
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(points), (float *)points, GL_STATIC_DRAW);
+
+            // index 0 as the input vertex points
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *)0);
+            glEnableVertexAttribArray(0);
+        }
+        glBindVertexArray(0);
+
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+        GL_CHECK_HEALTH();
+    }
+
+    void update()
+    {
+        GL_CALL(glBindVertexArray(VAO));
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glBindVertexArray(0);
+        GL_CHECK_HEALTH();
+    }
+
+    ~Triangle()
+    {
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &EBO);
+        glDeleteVertexArrays(1, &VAO);
+    }
+};
+
+
+
 int main(int, char **)
 {
     if (GLFW_FALSE == glfwInit()) {
         return -1;
     }
 
-    glfwSetErrorCallback(glfw_error_callback);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -157,8 +174,10 @@ int main(int, char **)
         return -1;
     }
 
+    glfwSetErrorCallback(glfw_error_callback);
     // Notice: this is a specific driver extension
     glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEPTH_TEST);
     if (glDebugMessageCallback != nullptr) {
         glDebugMessageCallback(gl_message_callback, nullptr);
         printf("Bound GL debug callback successfully\n");
@@ -190,12 +209,11 @@ int main(int, char **)
 
     glfwSwapInterval(1); // Enable vsync
     glm::vec4 clear_color{0, 0, 0, 1};
-    Triangle  tri;
-    tri.init();
-    auto shader = Shader::create("../asset/shader/default.glsl");
+
+    auto     shader = Shader::create("../asset/shader/default.glsl");
+    Triangle tri;
 
     while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
 
         // imgui begins
         {
@@ -204,9 +222,8 @@ int main(int, char **)
             ImGui::NewFrame();
         }
 
-
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         {
 
             if (ImGui::Begin("IMGUI")) {
@@ -216,13 +233,23 @@ int main(int, char **)
 
             // TODO: move
             {
-                int w, h;
-                glfwGetFramebufferSize(window, &w, &h);
-                glViewport(0, 0, w, h);
+
+                // void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+                // {
+                //     glViewport(0, 0, width, height);
+                // }
+                // glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+                static int w, h;
+                int        new_w, new_h;
+                glfwGetFramebufferSize(window, &new_w, &new_h);
+                if (new_w != w || new_h != h) {
+                    w = new_w, h = new_h;
+                    printf("Buffer size changed: %d, %d\n", w, h);
+                    glViewport(0, 0, w, h);
+                }
             }
 
             shader->bind();
-            tri.bind();
             tri.update();
             // tri.unbind();
 
@@ -253,6 +280,9 @@ int main(int, char **)
         }
 
         glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        GL_CHECK_HEALTH();
     }
 
     // IMGUI Destroy

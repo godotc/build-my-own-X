@@ -28,5 +28,6 @@ add_requires("imgui docking", {
 add_packages("imgui")
 
 target("yourcraft")
-set_kind("binary")
-add_files("src/*.cpp")
+    set_kind("binary")
+    add_files("src/**.cpp")
+    add_includedirs("src")

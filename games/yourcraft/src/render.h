@@ -1,6 +1,5 @@
 #pragma once
-#include "glm/gtc/type_ptr.hpp"
-#include "shader.h"
+#include "gl/shader.h"
 #include <glad/glad.h>
 #include <glm/fwd.hpp>
 #include <glm/matrix.hpp>

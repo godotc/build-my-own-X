@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -101,7 +102,7 @@ struct Triangle {
         { 0.5,  0.5, 0},
     };
 
-    float indices[2][3] = {
+    uint32_t indices[2][3] = {
         {0, 1, 2},
         {2, 1, 3}
     };
@@ -134,7 +135,7 @@ struct Triangle {
     {
         GL_CALL(glBindVertexArray(VAO));
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(uint32_t), GL_UNSIGNED_INT, 0);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
 
         glBindVertexArray(0);

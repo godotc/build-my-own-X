@@ -7,6 +7,7 @@ if is_plat("windows") then
     -- add_defines("_MSVC_LANG=202002L")
     add_defines("NOMINMAX")
     add_cxflags("/Zc:preprocessor")
+    add_cxflags("/Ehsc")
 end
 
 set_targetdir("bin")
@@ -28,6 +29,7 @@ add_requires("imgui docking", {
 add_packages("imgui")
 
 target("yourcraft")
-    set_kind("binary")
-    add_files("src/**.cpp")
-    add_includedirs("src")
+set_kind("binary")
+add_files("src/**.cpp")
+add_includedirs("src")
+

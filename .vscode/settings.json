@@ -1,0 +1,10 @@
+{
+    "Lua.diagnostics.globals": [
+        "target",
+        "set_kind",
+        "add_files",
+        "add_packages",
+        "add_requires",
+        "add_rules"
+    ]
+}

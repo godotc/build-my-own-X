@@ -10,13 +10,14 @@
 #include <glm/mat4x4.hpp>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 
 
 
-template <class Impl>
-struct IShader {
-    static std::shared_ptr<IShader<Impl>> create(const char *shader_filepath)
+struct Shader {
+    template <class Impl>
+    static std::shared_ptr<Shader> create(const char *shader_filepath)
     {
         return std::make_shared<Impl>(shader_filepath);
     }
@@ -32,7 +33,7 @@ struct IShader {
 
 #if RENDER_OPENGL
 
-struct OpenGLShader : public IShader<OpenGLShader> {
+struct OpenGLShader : public Shader {
     GLuint ID;
 
     OpenGLShader(const char *filename) //: IShader<OpenGLShader>()
@@ -69,8 +70,6 @@ struct OpenGLShader : public IShader<OpenGLShader> {
     static GLenum ShaderTypeFromString(const std::string &type);
 };
 
-
-using Shader = OpenGLShader;
 
 
 #endif

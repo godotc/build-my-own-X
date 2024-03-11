@@ -8,13 +8,20 @@
 
 #include "GLFW/glfw3.h"
 #include "gl/context.h"
+#include "gl/gl_macros.h"
+#include "glm/ext/matrix_transform.hpp"
 #include "glm/fwd.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include <glm/detail/qualifier.hpp>
 
 #include <glad/glad.h>
+#include <memory>
 
 #include "gl/shader.h"
 #include "imgui_layer.h"
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/matrix.hpp>
+#include <vector>
 
 #include "static_for.h"
 
@@ -57,10 +64,11 @@ struct Triangle {
     GLuint VBO = 0;
     GLuint EBO = 0;
 
-    const float vertexs[3][3] = {
-        {-0.5, -0.5, 0},
-        { 0.5, -0.5, 0},
-        { 0.0,  0.5, 0},
+    // dumy one col for multitply by matrix 4x4
+    const glm::vec4 vertexs[3] = {
+        {-0.5, -0.5, 0, 1},
+        { 0.5, -0.5, 0, 1},
+        { 0.0,  0.5, 0, 1},
     };
 
     uint32_t indices[3] = {0, 1, 2};
@@ -74,7 +82,6 @@ struct Triangle {
         {
             GL_CALL(glGenBuffers(1, &VBO));
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertexs), (float *)vertexs, GL_STATIC_DRAW);
 
             // attribs
             {
@@ -87,7 +94,6 @@ struct Triangle {
 
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
         GL_CHECK_HEALTH();
     }
@@ -95,15 +101,10 @@ struct Triangle {
     void bind()
     {
         GL_CALL(glBindVertexArray(VAO));
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
         GL_CHECK_HEALTH();
     }
 
-    void draw()
-    {
-        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(uint32_t), GL_UNSIGNED_INT, 0);
-    }
     void unbind()
     {
         glBindVertexArray(0);
@@ -117,23 +118,88 @@ struct Triangle {
     }
 };
 
+Triangle                      *tri;
+static std::shared_ptr<Shader> shader;
+struct VertexSpec {
+    glm::vec3 vertex;
+};
+constexpr uint32_t max_vertex = 10000;
+constexpr uint32_t max_index  = 10000;
+
+static VertexSpec *vertexs = new VertexSpec[max_vertex];
+static VertexSpec *head    = vertexs;
+
+static uint32_t indices[max_index];
+static int      indice_count;
 
 struct Render {
 
-    static DrawTriangle();
+    static void init()
+    {
+        shader = Shader::create<OpenGLShader>("../asset/shader/default.glsl");
+
+        tri = new Triangle;
+        tri->bind();
+
+        indice_count = 0;
+        for (int x = 0; x < 10000 / 3; ++x) {
+            for (int i = 0; i < 3; ++i) {
+                indices[x * 3 + i] = i;
+            }
+        }
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tri->EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, (void *)(indices), GL_STATIC_DRAW);
+    }
+
+    static void begin()
+    {
+        indice_count = 0;
+        tri->bind();
+        shader->bind();
+        // todo: camera location => view, projection
+        glBindBuffer(GL_ARRAY_BUFFER, tri->VBO);
+    }
+    static void draw_triangle(glm::vec3 pos)
+    {
+        glm::mat4 transform = glm::translate(glm::mat4(1.f), pos) *
+                              glm::rotate(glm::mat4(1.f), 0.f, {0.f, 0.f, 1.f}) *
+                              glm::scale(glm::mat4(1.f), {1, 1, 1});
+
+
+        for (int i = 0; i < 3; ++i) {
+            head->vertex = transform * tri->vertexs[i];
+            head++;
+        }
+        indice_count += 3;
+    }
+    static void end()
+    {
+        uint32_t size = (head - vertexs) * sizeof(VertexSpec);
+        head          = vertexs;
+
+        glBufferData(GL_ARRAY_BUFFER, size, (void *)vertexs, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tri->EBO);
+        glDrawElements(GL_TRIANGLES, indice_count, GL_UNSIGNED_INT, 0);
+
+        tri->unbind();
+
+        GL_CHECK_HEALTH();
+    }
 };
 
 
 int main(int, char **)
 {
+    printf("hello world\n");
     OpenGLContext gl_context;
     auto          window = gl_context.window;
 
     ImguiLayer imgui_context;
     imgui_context.init(window);
 
-    auto     shader = Shader::create("../asset/shader/default.glsl");
-    Triangle tri;
+    Render::init();
+    printf("hello world\n");
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -147,8 +213,12 @@ int main(int, char **)
             }
 
             {
-                shader->bind();
-                tri.update();
+                Render::begin();
+                Render::draw_triangle({0, 0, 0});
+                // Render::draw_triangle({1, 1, 1});
+                // Render::draw_triangle({-0.5, -0.5, -0.5});
+                // Render::draw_triangle({+0.5, +0.5, +0.5});
+                Render::end();
             }
         }
 

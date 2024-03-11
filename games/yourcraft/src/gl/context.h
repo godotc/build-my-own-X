@@ -8,7 +8,7 @@
 
 struct OpenGLContext {
     GLFWwindow *window;
-    glm::vec4   clear_color;
+    glm::vec4   clear_color = {};
 
     OpenGLContext()
     {

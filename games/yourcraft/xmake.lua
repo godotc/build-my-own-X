@@ -21,7 +21,7 @@ add_packages("glfw", "glad", "glm")
 add_requires("imgui docking", {
     configs = {
         shared = false,
-        debug = true,
+        -- debug = true,
         opengl3 = true,
         glfw = true
     }

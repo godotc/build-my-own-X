@@ -10,6 +10,12 @@ struct OpenGLContext {
     GLFWwindow *window;
     glm::vec4   clear_color = {};
 
+    static OpenGLContext &Get()
+    {
+        static auto *Context = new OpenGLContext;
+        return *Context;
+    }
+
     OpenGLContext()
     {
         init();
@@ -34,6 +40,6 @@ struct OpenGLContext {
         glfwPollEvents();
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        GL_CHECK_HEALTH();
+        // GL_CHECK_HEALTH();
     }
 };

@@ -1,36 +1,51 @@
 #include <cstddef>
 
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <format>
 #include <imgui.h>
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <glm/glm.hpp>
 
+#include "core/base.h"
 #include "delegate.h"
 
 #include "GLFW/glfw3.h"
 #include "gl/context.h"
 #include "gl/gl_macros.h"
+
+#include <glad/glad.h>
+#include <memory>
+
+#include "gl/shader.h"
+#include "glm/ext/quaternion_common.hpp"
+#include "glm/ext/vector_float4.hpp"
+#include "imgui_layer.h"
+
 #include "glm/exponential.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/fwd.hpp"
 #include "glm/geometric.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include <glm/detail/qualifier.hpp>
-
-#include <glad/glad.h>
-#include <memory>
-
-#include "gl/shader.h"
 #include "glm/trigonometric.hpp"
-#include "imgui_layer.h"
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/glm.hpp>
 #include <glm/matrix.hpp>
 
+
+#define GLM_ENABLE_EXPERIMENTAL
+// #include <glm/gtx/quaternion.hpp>
+
+void print(auto text, glm::vec3 v) { printf("%s: (%f, %f, %f)\n", text, v.x, v.y, v.z); };
+void print(auto text, glm::vec2 v) { printf("%s: (%f, %f)\n", text, v.x, v.y); };
+void print(glm::vec2 v) { printf(" (%f, %f)\n", v.x, v.y); };
+void print(glm::vec3 v) { printf(" (%f, %f, %f)\n", v.x, v.y, v.z); };
 
 static std::shared_ptr<Shader> shader;
 struct VertexSpec {
@@ -56,6 +71,8 @@ static uint32_t  indices[max_index];
 static uint32_t *indices_head = indices;
 
 static GLuint VAO, VBO, EBO;
+uint32_t      vertex_count = 0;
+uint32_t      index_count  = 0;
 
 
 namespace Input {
@@ -74,7 +91,6 @@ glm::vec2  GetMousePos()
 } // namespace Input
 
 
-
 struct {
     const glm::vec4 vertices[8] = {
   // Front face
@@ -89,6 +105,8 @@ struct {
         { 0.5f,  0.5f, -0.5f, 1.f}, // Top-right
         {-0.5f,  0.5f, -0.5f, 1.f}  // Top-left
     };
+
+    const float size = 0.5f;
 
     const std::vector<unsigned int> indices = {
         // Front face
@@ -124,19 +142,35 @@ struct {
 
 
 
+static constexpr glm::vec3 world_up = glm::vec3(0, 1, 0);
 struct Camera {
+
+    glm::vec3 pos = glm::vec3(0, 0, 0);
+
+    glm::vec3 camera_forward = glm::vec3(0, 0, -1);
+    glm::vec3 camera_upward  = world_up;
+    glm::vec3 camera_right   = glm::cross(camera_forward, world_up);
 
     float yaw   = -90.f;
     float pitch = 0.f;
     float roll  = 0.f;
 
+    float sensitivity = 5.f;
+
+    float speed = 5.f;
 
     glm::vec2 window_size = {800, 600};
 
+    glm::vec2 last_mouse_pos = {};
 
-    glm::vec3         pos                = glm::vec3(0, 0, -10);
-    glm::vec3         camera_forward_dir = glm::vec3(0, 0, 1);
-    mutable glm::vec3 world_up           = glm::vec3(0, 1, 0);
+
+    bool bMouseAndKeyBoard = true;
+
+    Camera()
+    {
+        update_directions();
+    }
+
 
     glm::mat4 GetViewProjectionMatrix() const
     {
@@ -148,52 +182,66 @@ struct Camera {
 
     glm::mat4 GetViewMatrix() const
     {
-        return glm::lookAt(pos, pos + camera_forward_dir, world_up);
+        // return glm::lookAt(pos, pos + camera_forward, world_up); // Should not be the world's up
+        return glm::lookAt(pos, pos + camera_forward, camera_upward);
     }
 
     void OnUpdate(float dt)
     {
-        float speed = 0.05f;
-        if (Input::IskeyPressed(GLFW_KEY_W)) {
-            pos += camera_forward_dir * speed;
+
+        // p("right", right);
+        // p("world up", world_up);
+        // printf("\t");
+        // p("up", up);
+        // printf("\n");
+        // p("forward", camera_forward_dir);
+        // return;
+
+        if (Input::IskeyPressed(GLFW_KEY_W))
+        {
+            pos += camera_forward * speed * dt;
         }
         if (Input::IskeyPressed(GLFW_KEY_S)) {
-            pos -= camera_forward_dir * speed;
+            pos -= camera_forward * speed * dt;
         }
         if (Input::IskeyPressed(GLFW_KEY_A)) {
-            pos -= glm::normalize(glm::cross(world_up, camera_forward_dir)) * speed;
+            pos -= camera_right * speed * dt;
         }
         if (Input::IskeyPressed(GLFW_KEY_D)) {
-            pos -= glm::cross(world_up, camera_forward_dir) * speed * speed;
+            pos += camera_right * speed * dt;
+        }
+        if (Input::IskeyPressed(GLFW_KEY_Q)) {
+            pos += world_up * speed * dt;
+        }
+        if (Input::IskeyPressed(GLFW_KEY_E)) {
+            pos -= world_up * speed * dt;
         }
 
         OnMouseMove(dt);
+        update_directions();
     }
 
     void OnMouseMove(float dt)
     {
 
-        glm::vec2 last_mouse_pos = {};
         if (!Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
             return;
         }
 
         glm::vec2 mouse_pos = Input::GetMousePos();
 
-        if (last_mouse_pos == mouse_pos) {
-            return;
-        }
-
-        const float sensitivity = 0.1f;
-
         auto offset = (mouse_pos - last_mouse_pos) * sensitivity * dt;
-        if (offset.x < 0.1f || offset.y < 0.1f) {
-            return;
-        }
-        last_mouse_pos = pos;
+        // if (offset.x < f || offset.y < 0.1f) {
+        //     return;
+        // }
+        last_mouse_pos = mouse_pos;
+
+        // print("mouse pos", mouse_pos);
+
+        // printf("offset: %f, %f\n", offset.x, offset.y);
 
         yaw += offset.x;
-        pitch += offset.y;
+        pitch -= offset.y;
 
         if (pitch > 89.0f)
             pitch = 89.0f;
@@ -204,15 +252,46 @@ struct Camera {
         // imagine the yaw is -90(the right forward 正前方), pitch is 45 (roll up 45degree 向上抬45度)
         //   the length in x and z be 1 as default (x 和 z 本该是1)
         //  but roll up make it projection on x and z reduces (45度仰角投影在x和z上的长度小于0度仰角，由pitch控制)
-        // the y did not be affected: by the roll-up degree (y即高度，只跟仰角相关)
+        // the y did not be affected: by the roll-up degree (y即高度，只跟仰角相关)  -> NO, up is y
         // Above logic from euler angles(根据欧拉角来的，先x,z再y, 反过来也行？ 不过人是主要左右转再上下看的....)
 
-        float t = glm::cos(glm::radians(pitch));
 
-        glm::vec3 dir      = {glm::cos(glm::radians(yaw) * t),
-                              glm::sin(glm::radians(pitch)),
-                              glm::cos(glm::radians(yaw) * t)};
-        camera_forward_dir = glm::normalize(dir);
+        // float     t = glm::cos(glm::radians(pitch));
+        // glm::vec3 dir;
+        // dir = {glm::cos(glm::radians(yaw)) * t,
+        //        glm::sin(glm::radians(pitch)),
+        //        glm::sin(glm::radians(yaw)) * t};
+        // // glm::quat q(roll, pitch, yaw);
+        // camera_forward_dir = glm::normalize(dir);
+    }
+
+    void OnWindowFocusChanged(bool bFocused)
+    {
+    }
+
+    void update_directions()
+    {
+        float     t = glm::cos(glm::radians(pitch));
+        glm::vec3 dir;
+        dir = {glm::cos(glm::radians(yaw)) * t,
+               glm::sin(glm::radians(pitch)),
+               glm::sin(glm::radians(yaw)) * t};
+        // glm::quat q(roll, pitch, yaw);
+        camera_forward = glm::normalize(dir);
+        camera_right   = glm::cross(world_up, camera_forward);
+        camera_upward  = glm::cross(camera_forward, camera_right);
+    }
+
+    void OnMouseButtonEvent(unsigned int btn, unsigned int action, unsigned int mods)
+    {
+        if (btn == GLFW_MOUSE_BUTTON_RIGHT)
+        {
+            if (action == GLFW_PRESS) {
+                last_mouse_pos = Input::GetMousePos();
+            }
+            else {
+            }
+        }
     }
 };
 
@@ -262,6 +341,9 @@ struct Render {
 
     static void begin(const Camera &camera)
     {
+        vertex_count = 0;
+        index_count  = 0;
+
         glm::mat4 view_projection = camera.GetViewProjectionMatrix();
         // glm::mat4 view_projection = camera.GetViewMatrix();
 
@@ -279,15 +361,18 @@ struct Render {
                               glm::scale(glm::mat4(1.f), scale);
 
 
+        size_t size = Triangle.indices.size();
+        for (int i = 0; i < size; ++i) {
+            *indices_head = Triangle.indices[i] + vertex_count;
+            indices_head++;
+        }
 
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 3; ++i)
+        {
             vertexes_head->vertex = transform * Triangle.vertices[i];
             vertexes_head++;
         }
-
-        size_t size = Triangle.indices.size();
-        std::memcpy(indices_head, Triangle.indices.data(), size * sizeof(uint32_t));
-        indices_head += size;
+        vertex_count += 3;
     }
 
     static void draw_cube(glm::vec3 pos, glm::vec3 scale, glm::vec4 color = glm::vec4(1.f))
@@ -296,15 +381,18 @@ struct Render {
                               glm::rotate(glm::mat4(1.f), 0.f, {0.f, 0.f, 1.f}) *
                               glm::scale(glm::mat4(1.f), scale);
 
+        size_t size = Cube.indices.size();
+        for (int i = 0; i < size; ++i) {
+            *indices_head = Cube.indices[i] + vertex_count;
+            indices_head++;
+        };
 
         for (int i = 0; i < 8; ++i) {
             vertexes_head->vertex = transform * Cube.vertices[i];
             vertexes_head->color  = color;
             vertexes_head++;
         }
-        size_t size = Cube.indices.size();
-        std::memcpy(indices_head, Cube.indices.data(), size * sizeof(uint32_t));
-        indices_head += size;
+        vertex_count += 8;
     }
 
     static void end()
@@ -334,16 +422,20 @@ int main(int, char **)
     auto gl_context = OpenGLContext::Get();
     auto window     = gl_context.window;
 
+
     ImguiLayer imgui_context;
     imgui_context.init(window);
 
     Render::init();
+
+
     printf("hello world\n");
 
     glm::vec3 pos = {0, 0, -1}, direction = {0, 0, 0};
 
 
     Camera camera;
+
     glfwSetKeyCallback(gl_context.window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
         if (action == GLFW_PRESS || action == GLFW_REPEAT) {
             Input::keyboards[key] = 1;
@@ -353,13 +445,25 @@ int main(int, char **)
             Input::keyboards[key] = 0;
         }
     });
-    // static MulticastDelegate<glm::vec2> OnMouseMove;
+    static MulticastDelegate<glm::vec2> OnMouseMove;
     glfwSetCursorPosCallback(gl_context.window, [](GLFWwindow *window, double xpos, double ypos) {
-        // OnMouseMove.Broadcast({xpos, ypos});
+        OnMouseMove.Broadcast({xpos, ypos});
     });
+
+    static MulticastDelegate<GLenum /*button*/, GLenum /*action*/, GLenum /*mods*/> OnMouseButtonEvent;
+    OnMouseButtonEvent.Add(&camera, &Camera::OnMouseButtonEvent);
     glfwSetMouseButtonCallback(gl_context.window, [](GLFWwindow *window, int button, int action, int mods) {
         Input::MouseButtons[button] = action == GLFW_PRESS ? 1 : 0;
+        OnMouseButtonEvent.Broadcast(button, action, mods);
     });
+
+    static MulticastDelegate<bool> OnWindowFocusChanged;
+    OnWindowFocusChanged.Add(&camera, &Camera::OnWindowFocusChanged);
+    glfwSetWindowFocusCallback(window, [](GLFWwindow *window, int focused) {
+        OnWindowFocusChanged.Broadcast(focused == GLFW_TRUE);
+    });
+
+    // OnWindowFocusChanged.AddWeak(&camera, ())
 
 
     double last_time = glfwGetTime();
@@ -377,8 +481,14 @@ int main(int, char **)
                 if (ImGui::Begin("IMGUI")) {
                     ImGui::DragFloat4("Clear Color", glm::value_ptr(gl_context.clear_color), 0.05f, 0.f, 1.f);
                     ImGui::DragFloat3("Pos", glm::value_ptr(camera.pos), 0.3);
-                    ImGui::DragFloat3("Center", glm::value_ptr(camera.camera_forward_dir));
-
+                    ImGui::DragFloat3("Forwards", glm::value_ptr(camera.camera_forward));
+                    if (ImGui::Button("Rest Camera")) {
+                        camera.pos            = glm::vec3(0, 0, -10);
+                        camera.camera_forward = glm::vec3(0, 0, 1);
+                        camera.yaw            = -90.f;
+                        camera.pitch          = 0.f;
+                        camera.roll           = 0.f;
+                    }
                     {
                         ImGui::DragFloat("Yaw", &camera.yaw);
                         ImGui::DragFloat("Pitch", &camera.pitch);
@@ -387,31 +497,45 @@ int main(int, char **)
                     ImGui::End();
                 }
             }
+        }
 
+        {
+
+            int w, h;
+            glfwGetWindowSize(window, &w, &h);
+
+            camera.window_size = {w, h};
+            camera.OnUpdate(dt);
+        }
+
+        {
+            Render::begin(camera);
+            Render::draw_triangle({0, 0, -1}, glm::vec3(5));
+            Render::draw_triangle({1, 1, 1});
+            Render::draw_triangle({-0.5, -0.5, -0.5});
+            Render::draw_triangle({+0.5, +0.5, +0.5});
+
+            glm::vec3 pos = {-10, 0, -10};
+            for (int i = 0; i < 10; ++i)
             {
-
-                int w, h;
-                glfwGetWindowSize(window, &w, &h);
-
-                camera.window_size = {w, h};
-                camera.OnUpdate(dt);
+                for (int j = 0; j < 10; ++j) {
+                    auto p = pos;
+                    p.x += Cube.size * i;
+                    p.y += Cube.size * j;
+                    auto color = glm::vec4(
+                        i / 10.f, j / 10.f,
+                        0, 1);
+                    Render::draw_cube(p, glm::vec3(1), color);
+                }
             }
 
-            {
-                Render::begin(camera);
-                Render::draw_triangle({0, 0, -1}, glm::vec3(5));
-                Render::draw_triangle({1, 1, 1});
-                Render::draw_triangle({-0.5, -0.5, -0.5});
-                Render::draw_triangle({+0.5, +0.5, +0.5});
-
-                Render::draw_cube({0, 0, 0}, {20, 20, 1}, {1, 0, 0, 1});
-                Render::end();
-                glPointSize(15.f);
-                glBegin(GL_POINTS);
-                glVertex3f(0, 0, 0);
-                glVertex3f(1, 0, 0);
-                glEnd();
-            }
+            Render::draw_cube({0, 0, 0}, {5, 1, 5}, {1, 0, 0, 1});
+            Render::end();
+            glPointSize(15.f);
+            glBegin(GL_POINTS);
+            glVertex3f(0, 0, 0);
+            glVertex3f(1, 0, 0);
+            glEnd();
         }
 
         imgui_context.postupdate();

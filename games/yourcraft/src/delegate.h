@@ -52,12 +52,21 @@ class MulticastDelegate
     void Add(const FunctionType &function) { m_Functions.push_back(function); }
 
     template <typename Obj>
-    void AddWeak(Obj *obj, void (Obj::*memberFunc)(Args...))
+    void Add(Obj *obj, void (Obj::*member_func)(Args...))
+    {
+        m_Functions.push_back([obj, member_func](Args... args) {
+            (obj->*member_func)(std::forward<Args>(args)...);
+        });
+    }
+
+
+    template <typename Obj>
+    void AddWeak(Obj *obj, void (Obj::*member_func)(Args...))
     {
         std::weak_ptr<Obj> weak_obj(obj);
-        m_Functions.push_back([weak_obj, memberFunc](Args... args) {
-            if (auto objPtr = weak_obj.lock()) {
-                (objPtr.get()->*memberFunc)(std::forward<Args>(args)...);
+        m_Functions.push_back([weak_obj, member_func](Args... args) {
+            if (auto obj = weak_obj.lock()) {
+                (obj.get()->*member_func)(std::forward<Args>(args)...);
             }
         });
     }

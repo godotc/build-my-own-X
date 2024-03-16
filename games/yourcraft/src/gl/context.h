@@ -30,9 +30,16 @@ struct OpenGLContext {
     void init();
     void config()
     {
-        glEnable(GL_DEPTH_TEST);
         glfwSwapInterval(1); // Enable vsync
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_GREATER);
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glFrontFace(GL_CCW);
     }
+
 
     void update()
     {

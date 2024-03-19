@@ -52,7 +52,7 @@ async fn main() {
 
     // here to create the genesis
     spawn(async move {
-        let _ = sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
         info!("sending init event");
         init_sender.send(true).expect("can send init event");
     });
@@ -81,11 +81,13 @@ async fn main() {
         }
         match ev.unwrap() {
             p2p::EventType::Init => {
+                // owning gnesis block
                 let peers = p2p::get_list_peers(&swarm);
+                info!("connected nodes: {}", peers.len());
                 swarm.behaviour_mut().app.genesis();
 
-                info!("connected nodes: {}", peers.len());
                 if !peers.is_empty() {
+                    // request other nodes' blockchain, wait syncing the data
                     let req = p2p::LocalChainRequest {
                         from_peer_id: peers.iter().last().expect("at least one peer").to_string(),
                     };

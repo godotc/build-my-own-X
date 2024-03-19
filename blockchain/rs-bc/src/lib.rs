@@ -1,7 +1,8 @@
-mod p2p;
+pub mod p2p;
 
 use chrono::Utc;
 
+use libp2p::identity::ed25519;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -69,11 +70,11 @@ pub struct Block {
 }
 
 impl App {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { blocks: vec![] }
     }
 
-    fn genesis(&mut self) {
+    pub fn genesis(&mut self) {
         let mut genesis_block = Block {
             id: 0,
             timestamp: Utc::now().timestamp(),
@@ -83,7 +84,15 @@ impl App {
             hash: "".into(),
         };
 
-        //genesis_block.hash =
+        // WHY genesis block's hash need to be the same?
+        // let hash = calculate_hash(
+        //     genesis_block.id,
+        //     genesis_block.timestamp,
+        //     &genesis_block.previous_hash,
+        //     &genesis_block.data,
+        //     genesis_block.nonce,
+        // );
+        // genesis_block.hash = hash_to_binary_reprsentation(&hash);
 
         self.blocks.push(genesis_block)
     }
@@ -97,18 +106,18 @@ impl App {
         }
     }
 
-    fn choose_chain(&mut self, local: &Vec<Block>, remote: &Vec<Block>) -> Vec<Block> {
+    fn choose_chain(&mut self, local: Vec<Block>, remote: Vec<Block>) -> Vec<Block> {
         let is_local_valid = self.is_chain_valid(&local);
         let is_remote_valid = self.is_chain_valid(&remote);
 
         if is_local_valid && is_remote_valid {
             if local.len() >= remote.len() {
-                local.clone()
+                local
             } else {
-                remote.clone()
+                remote
             }
         } else if is_remote_valid {
-            remote.clone()
+            remote
         } else if is_local_valid {
             local.clone()
         } else {

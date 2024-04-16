@@ -8,6 +8,8 @@ if is_plat("windows") then
     add_defines("NOMINMAX")
     add_cxflags("/Zc:preprocessor")
     add_cxflags("/Ehsc")
+else
+
 end
 
 set_targetdir("bin")
@@ -15,8 +17,9 @@ set_targetdir("bin")
 
 set_languages("c++20")
 
-add_requires("glfw", "glad", "glm")
-add_packages("glfw", "glad", "glm")
+-- add_requires("glfw", "glad", "glm")
+-- add_packages("glfw", "glad", "glm")
+
 
 add_requires("imgui docking", {
     configs = {
@@ -28,8 +31,29 @@ add_requires("imgui docking", {
 })
 add_packages("imgui")
 
-target("yourcraft")
-set_kind("binary")
-add_files("src/**.cpp")
-add_includedirs("src")
+local function global_packages(...)
+    local names = { ... }
+    for _, name in ipairs(names) do
+        add_packages(name)
+        add_requires(name)
+    end
+end
 
+global_packages(
+    "glfw"
+    , "glad"
+    , "glm"
+    , "rang"
+)
+
+-- local lfs = require("lfs")
+print(cur_dir)
+
+
+
+---@format disable
+target("yourcraft")
+    set_kind("binary")
+    add_files("src/**.cpp")
+    add_includedirs("src")
+target_end()

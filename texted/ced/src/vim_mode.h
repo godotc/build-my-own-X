@@ -89,6 +89,7 @@ enum class EVimEditorMode : uint8_t {
      (insert) SELECT --" is shown at the bottom of the window.
 
         */
+
 };
 
 inline bool is_cursor_controlled(EVimEditorMode mode) {

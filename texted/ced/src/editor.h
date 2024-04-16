@@ -23,38 +23,16 @@
 #include "assert.h"
 
 #include "base.h"
-#include "mode.h"
+#include "mod.h"
 #include "util.h"
-#include <string.h>
+#include "vim_mode.h"
 
 #include <fstream>
+#include <string.h>
 
 namespace ced {
 
 #define CTRL_KEY(x) ((x)&0x1f)
-
-struct DeferScreenCleaner {
-    ~DeferScreenCleaner()
-    {
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        write(STDOUT_FILENO, "\x1b[H", 3);
-    }
-};
-
-enum EKeyMoveCuror : int
-{
-    CursorLeft  = 'h',
-    CursorRight = 'l',
-    CursorUp    = 'k',
-    CursorDown  = 'j',
-
-    PageUp = 200,
-    PageDown,
-
-    Delete,
-};
-
-
 
 struct EditorContext {
     // cursor x/y pos
@@ -65,14 +43,63 @@ struct EditorContext {
     // recored the current first line num
     int row_offset = 0, column_offset = 0;
 
-    EEditorMode mode = EEditorMode::Normal;
-
+    EKeyBinding    keybinding = EKeyBinding::Vim;
+    EVimEditorMode mode       = EVimEditorMode::Normal;
 
     String              filebuffer;
     std::vector<String> lines;
 
     bool is_display_linenumber = true;
 };
+
+struct DeferScreenCleaner {
+    ~DeferScreenCleaner()
+    {
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+    }
+};
+
+enum class EOperation
+{
+    CursorLeft,
+    CursorRight,
+    CursorUp,
+    CursorDown,
+
+    PageUp,
+    PageDown,
+
+    Delete,
+};
+
+
+template <class T>
+int OperationToInt(T) = delete;
+template <>
+int OperationToInt(EOperation op)
+{
+    switch (op) {
+    case EOperation::CursorLeft:
+        return 'h';
+    case EOperation::CursorRight:
+        return 'l';
+    case EOperation::CursorUp:
+        return 'k';
+    case EOperation::CursorDown:
+        return 'j';
+        break;
+
+    case EOperation::PageUp:
+    case EOperation::PageDown:
+    case EOperation::Delete:
+    default:
+        break;
+    }
+
+    return '\x1nil';
+}
+
 
 struct Editor {
     String version = "0.0.1";
@@ -84,6 +111,9 @@ struct Editor {
 
     Editor()
     {
+        // TODO: support normal keybind
+        ASSERT(context.keybinding == EKeyBinding::Vim, "?");
+
         // int row, col;
         if (!get_window_size(context.rows, context.cols)) {
             die("get window size");
@@ -119,12 +149,10 @@ struct Editor {
         if (!filename)
             return;
 
-
         std::fstream fs(filename);
         if (fs.fail()) {
             die("open file");
         }
-
 
         // how to read all lines into buffers?
         context.lines.clear();
@@ -183,8 +211,7 @@ struct Editor {
             // draw cursor in cx & cy, (move cursor to the x,y)
             char buf[32];
             int  len = snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
-                                context.cy - context.row_offset + 1,
-                                context.cx + 1);
+                                context.cy - context.row_offset + 1, context.cx + 1);
             assert(len > 0 && len < 32);
             buffer.append(buf, len);
         }
@@ -200,12 +227,10 @@ struct Editor {
     void draw_rows()
     {
         // I DONT know why the 0 line cannot be drew on screen
-        for (int y = 1; y < context.rows; ++y)
-        {
+        for (int y = 1; y < context.rows; ++y) {
             int file_line = y - 1 + context.row_offset;
             // draw the string in files
-            if (file_line < context.lines.size())
-            {
+            if (file_line < context.lines.size()) {
                 const auto line = context.lines[file_line];
                 int        len  = line.size() - context.column_offset;
 
@@ -230,12 +255,12 @@ struct Editor {
                 // sleep(1);
             }
 
-
             else {
                 // the flag
                 if (y == context.rows / 3) {
                     char welcome[80];
-                    int  len = snprintf(welcome, sizeof(welcome), "ced editor ---- version %s\r\n", version.data());
+                    int  len = snprintf(welcome, sizeof(welcome),
+                                        "ced editor ---- version %s\r\n", version.data());
                     len      = std::min(len, context.cols);
 
                     int padding = (context.cols - len) / 2;
@@ -280,14 +305,13 @@ struct Editor {
             }
         }
 
-
         // The last line no need "\r\n"
         // write(STDOUT_FILENO, "~", 1);
     }
 
     bool process_keypress()
     {
-        int ch = read_key();
+        int ch = handle_input();
 
         bool result = true;
 
@@ -302,19 +326,20 @@ struct Editor {
         }
 
         if (is_cursor_controlled(context.mode)) {
-            switch (EKeyMoveCuror(ch)) {
+            switch (EOperation(ch)) {
             case CursorLeft:
             case CursorRight:
             case CursorUp:
             case CursorDown:
-                move_cursor(static_cast<EKeyMoveCuror>(ch));
+                move_cursor(static_cast<EOperation>(ch));
                 break;
             case PageUp:
             case PageDown:
             {
                 int times = context.rows;
                 while (times--) {
-                    move_cursor(ch == EKeyMoveCuror::PageUp ? EKeyMoveCuror::CursorUp : EKeyMoveCuror::CursorDown);
+                    move_cursor(ch == EOperation::PageUp ? EOperation::CursorUp
+                                                         : EOperation::CursorDown);
                 }
                 break;
             }
@@ -324,12 +349,12 @@ struct Editor {
         }
 
         switch (context.mode) {
-        case EEditorMode::Normal:
+        case EVimEditorMode::Normal:
         {
             switch (ch) {
             case 'i':
             {
-                context.mode = EEditorMode::Insert;
+                context.mode = EVimEditorMode::Insert;
                 break;
             }
 
@@ -338,20 +363,20 @@ struct Editor {
             }
             break;
         }
-        case EEditorMode::Visual:
-        case EEditorMode::Select:
-        case EEditorMode::Insert:
+        case EVimEditorMode::Visual:
+        case EVimEditorMode::Select:
+        case EVimEditorMode::Insert:
         {
             switch (ch) {
             case '\x1b':
-                context.mode = EEditorMode::Normal;
+                context.mode = EVimEditorMode::Normal;
                 break;
             }
             break;
         }
-        case EEditorMode::Commandline:
-        case EEditorMode::Ex:
-        case EEditorMode::Terminal:
+        case EVimEditorMode::Commandline:
+        case EVimEditorMode::Ex:
+        case EVimEditorMode::Terminal:
             break;
         }
 
@@ -360,7 +385,7 @@ struct Editor {
 
     template <class T>
     void move_cursor(T) = delete;
-    void move_cursor(EKeyMoveCuror key)
+    void move_cursor(EOperation key)
     {
         switch (key) {
         case CursorLeft:
@@ -455,12 +480,16 @@ struct Editor {
         return true;
     }
 
-    int read_key()
+    int handle_input()
     {
         int  num_read;
         char ch;
         // loop read till not -1
-        while (-1 == (num_read = read(STDIN_FILENO, &ch, 1))) {
+        while (1) {
+            num_read = read(STDIN_FILENO, &ch, 1);
+            if (num_read != -1) {
+                break;
+            }
             // not EAGAIN continue lopping
             if (num_read == -1 && errno != EAGAIN) {
                 die("read");
@@ -476,38 +505,33 @@ struct Editor {
             if (1 != read(STDIN_FILENO, &last_sequence[1], 1))
                 return '\x1b';
 
-            if (last_sequence[0] == '[' && is_cursor_controlled(context.mode))
-            {
-                if (last_sequence[1] >= '0' && last_sequence[1] <= 9)
-                {
+            if (last_sequence[0] == '[' && is_cursor_controlled(context.mode)) {
+                if (last_sequence[1] >= '0' && last_sequence[1] <= 9) {
                     if (1 != read(STDIN_FILENO, &last_sequence[2], 1))
                         return '\x1b';
 
-                    if (last_sequence[2] == '~')
-                    {
-                        switch (last_sequence[1])
-                        {
+                    if (last_sequence[2] == '~') {
+                        switch (last_sequence[1]) {
                         case '3':
-                            return EKeyMoveCuror::Delete;
+                            return EOperation::Delete;
                         case '5':
-                            return EKeyMoveCuror::PageUp;
+                            return EOperation::PageUp;
                         case '6':
-                            return EKeyMoveCuror::PageDown;
+                            return EOperation::PageDown;
                         }
                     }
                 }
-                else
-                {
+                else {
                     switch (last_sequence[1]) {
                     // arrows  up,down,right,left -> A,B,C,D
                     case 'A':
-                        return EKeyMoveCuror::CursorUp;
+                        return EOperation::CursorUp;
                     case 'B':
-                        return EKeyMoveCuror::CursorDown;
+                        return EOperation::CursorDown;
                     case 'C':
-                        return EKeyMoveCuror::CursorRight;
+                        return EOperation::CursorRight;
                     case 'D':
-                        return EKeyMoveCuror::CursorLeft;
+                        return EOperation::CursorLeft;
                     default:
                         break;
                     }
@@ -515,7 +539,6 @@ struct Editor {
             }
             return '\x1b';
         }
-
 
         switch (ch) {
         case CTRL_KEY('f'):

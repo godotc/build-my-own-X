@@ -73,4 +73,33 @@ struct RawMode {
         }
     }
 };
+
+
+
+#if defined(_WIN32)
+#define PLATFORM_BREAK() __debugbreak()
+#define THE_FUNCTION __FUNCSIG__
+#elif defined(__clang__) || defined(__GNUC__)
+#define PLATFORM_BREAK() __builtin_trap()
+#define THE_FUNCTION __PRETTY_FUNCTION__
+#else
+#define PLATFORM_BREAK()
+#endif
+
+
+#ifndef NDEBUG
+#define ASSERT(x, ...)                                                                            \
+    {                                                                                             \
+        if (!!!(x)) {                                                                             \
+            fprintf(stderr, "Assertion Failed: %s:%d, %s\n\t", __FILE__, __LINE__, THE_FUNCTION); \
+            fprintf(stderr __VA_OPT__(, ) __VA_ARGS__);                                           \
+            PLATFORM_BREAK();                                                                     \
+        }                                                                                         \
+    }
+#else
+#define ASSERT(x, ...)
+#endif
+
+
+
 } // namespace ced

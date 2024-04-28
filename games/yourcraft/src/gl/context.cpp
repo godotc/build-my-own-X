@@ -1,6 +1,7 @@
 #include "context.h"
 #include <cstdio>
 #include <iostream>
+#include <stdexcept>
 
 static void glfw_error_callback(int error, const char *description);
 static void gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
@@ -8,9 +9,8 @@ static void gl_message_callback(GLenum source, GLenum type, GLuint id, GLenum se
 
 void OpenGLContext::init()
 {
-
     if (GLFW_FALSE == glfwInit()) {
-        throw "failed to init glfw";
+        throw std::runtime_error("failed to init glfw");
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -40,7 +40,6 @@ void OpenGLContext::init()
     else {
         printf("glDebugMessageCallback is nullptr. Maybe your driver is not supportting this extionsion!\n");
     }
-
 
     glfwSetFramebufferSizeCallback(window,
                                    [](GLFWwindow *window, int width, int height) { glViewport(0, 0, width, height); });

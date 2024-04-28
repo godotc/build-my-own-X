@@ -1,9 +1,11 @@
 
 
 cfg:
-	xmake f -c
-	xmake f -m debug 
+	xmake f -c -m debug 
 	xmake project -k compile_commands
+
+b:
+	xmake b
 
 r:
 	xmake b 

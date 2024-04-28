@@ -33,6 +33,7 @@
 #include "glm/geometric.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/trigonometric.hpp"
+#include "log.h"
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
@@ -93,13 +94,13 @@ glm::vec2  GetMousePos()
 
 struct {
     const glm::vec4 vertices[8] = {
-  // Front face
+        // Front face
         {-0.5f, -0.5f,  0.5f, 1.f}, // Bottom-left
         { 0.5f, -0.5f,  0.5f, 1.f}, // Bottom-right
         { 0.5f,  0.5f,  0.5f, 1.f}, // Top-right
         {-0.5f,  0.5f,  0.5f, 1.f}, // Top-left
 
-  // Back face
+        // Back face
         {-0.5f, -0.5f, -0.5f, 1.f}, // Bottom-left
         { 0.5f, -0.5f, -0.5f, 1.f}, // Bottom-right
         { 0.5f,  0.5f, -0.5f, 1.f}, // Top-right
@@ -156,27 +157,23 @@ struct Camera {
     float roll  = 0.f;
 
     float sensitivity = 5.f;
-
-    float speed = 5.f;
+    float speed       = 5.f;
 
     glm::vec2 window_size = {800, 600};
 
     glm::vec2 last_mouse_pos = {};
 
-
     bool bMouseAndKeyBoard = true;
 
-    Camera()
-    {
-        update_directions();
-    }
-
+    Camera() { update_directions(); }
 
     glm::mat4 GetViewProjectionMatrix() const
     {
         return
             // TODO: no need to calc the perspective matrix every time
-            glm::perspective(glm::radians(45.f), window_size.x / (float)window_size.y, 0.1f, 100.f) *
+            glm::perspective(glm::radians(45.f),
+                             window_size.x / (float)window_size.y,
+                             0.1f, 100.f) *
             GetViewMatrix();
     }
 
@@ -188,15 +185,6 @@ struct Camera {
 
     void OnUpdate(float dt)
     {
-
-        // p("right", right);
-        // p("world up", world_up);
-        // printf("\t");
-        // p("up", up);
-        // printf("\n");
-        // p("forward", camera_forward_dir);
-        // return;
-
         if (Input::IskeyPressed(GLFW_KEY_W))
         {
             pos += camera_forward * speed * dt;
@@ -223,7 +211,6 @@ struct Camera {
 
     void OnMouseMove(float dt)
     {
-
         if (!Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
             return;
         }
@@ -298,7 +285,6 @@ struct Camera {
 
 
 struct Render {
-
     static void init()
     {
         glGenVertexArrays(1, &VAO);
@@ -395,7 +381,7 @@ struct Render {
         vertex_count += 8;
     }
 
-    static void end()
+    static void done()
     {
         uint32_t vertexes_size = (vertexes_head - vertexes) * sizeof(VertexSpec);
         // uint32_t size = (uint8_t *)head - (uint8_t *)vertexes;
@@ -418,50 +404,43 @@ struct Render {
 
 int main(int, char **)
 {
-    printf("hello world\n");
-    auto gl_context = OpenGLContext::Get();
-    auto window     = gl_context.window;
-
+    // printf("hello world\n");
+    auto  gl_context = OpenGLContext::Get();
+    auto *window     = gl_context.window;
 
     ImguiLayer imgui_context;
     imgui_context.init(window);
 
     Render::init();
 
-
-    printf("hello world\n");
-
-    glm::vec3 pos = {0, 0, -1}, direction = {0, 0, 0};
-
-
+    // printf("hello world\n");
     Camera camera;
 
-    glfwSetKeyCallback(gl_context.window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
-        if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-            Input::keyboards[key] = 1;
-        }
-        else
-        {
-            Input::keyboards[key] = 0;
-        }
-    });
-    static MulticastDelegate<glm::vec2> OnMouseMove;
-    glfwSetCursorPosCallback(gl_context.window, [](GLFWwindow *window, double xpos, double ypos) {
-        OnMouseMove.Broadcast({xpos, ypos});
-    });
+    // glfwSetKeyCallback(gl_context.window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+    //     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+    //         Input::keyboards[key] = 1;
+    //     }
+    //     else {
+    //         Input::keyboards[key] = 0;
+    //     }
+    // });
+    // static MulticastDelegate<glm::vec2> OnMouseMove;
+    // glfwSetCursorPosCallback(gl_context.window, [](GLFWwindow *window, double xpos, double ypos) {
+    //     OnMouseMove.Broadcast({xpos, ypos});
+    // });
 
-    static MulticastDelegate<GLenum /*button*/, GLenum /*action*/, GLenum /*mods*/> OnMouseButtonEvent;
-    OnMouseButtonEvent.Add(&camera, &Camera::OnMouseButtonEvent);
-    glfwSetMouseButtonCallback(gl_context.window, [](GLFWwindow *window, int button, int action, int mods) {
-        Input::MouseButtons[button] = action == GLFW_PRESS ? 1 : 0;
-        OnMouseButtonEvent.Broadcast(button, action, mods);
-    });
+    // static MulticastDelegate<GLenum /*button*/, GLenum /*action*/, GLenum /*mods*/> OnMouseButtonEvent;
+    // OnMouseButtonEvent.Add(&camera, &Camera::OnMouseButtonEvent);
+    // glfwSetMouseButtonCallback(gl_context.window, [](GLFWwindow *window, int button, int action, int mods) {
+    //     Input::MouseButtons[button] = action == GLFW_PRESS ? 1 : 0;
+    //     OnMouseButtonEvent.Broadcast(button, action, mods);
+    // });
 
-    static MulticastDelegate<bool> OnWindowFocusChanged;
-    OnWindowFocusChanged.Add(&camera, &Camera::OnWindowFocusChanged);
-    glfwSetWindowFocusCallback(window, [](GLFWwindow *window, int focused) {
-        OnWindowFocusChanged.Broadcast(focused == GLFW_TRUE);
-    });
+    // static MulticastDelegate<bool> OnWindowFocusChanged;
+    // OnWindowFocusChanged.Add(&camera, &Camera::OnWindowFocusChanged);
+    // glfwSetWindowFocusCallback(window, [](GLFWwindow *window, int focused) {
+    //     OnWindowFocusChanged.Broadcast(focused == GLFW_TRUE);
+    // });
 
     // OnWindowFocusChanged.AddWeak(&camera, ())
 
@@ -474,31 +453,29 @@ int main(int, char **)
         double dt = time - last_time;
         last_time = time;
         // printf("%f\n", dt);
+        gl_context.update();
 
-        imgui_context.preupdate();
+        imgui_context.pre_update();
         {
-            {
-                if (ImGui::Begin("IMGUI")) {
-                    ImGui::DragFloat4("Clear Color", glm::value_ptr(gl_context.clear_color), 0.05f, 0.f, 1.f);
-                    ImGui::DragFloat3("Pos", glm::value_ptr(camera.pos), 0.3);
-                    ImGui::DragFloat3("Forwards", glm::value_ptr(camera.camera_forward));
-                    if (ImGui::Button("Rest Camera")) {
-                        camera.pos            = glm::vec3(0, 0, -10);
-                        camera.camera_forward = glm::vec3(0, 0, 1);
-                        camera.yaw            = -90.f;
-                        camera.pitch          = 0.f;
-                        camera.roll           = 0.f;
-                    }
-                    {
-                        ImGui::DragFloat("Yaw", &camera.yaw);
-                        ImGui::DragFloat("Pitch", &camera.pitch);
-                        ImGui::DragFloat("Roll", &camera.roll);
-                    }
-                    ImGui::End();
+            if (ImGui::Begin("IMGUI")) {
+                ImGui::DragFloat4("Clear Color", glm::value_ptr(gl_context.clear_color), 0.05f, 0.f, 1.f);
+                ImGui::DragFloat3("Pos", glm::value_ptr(camera.pos), 0.3);
+                ImGui::DragFloat3("Forwards", glm::value_ptr(camera.camera_forward));
+                if (ImGui::Button("Rest Camera")) {
+                    camera.pos            = glm::vec3(0, 0, -10);
+                    camera.camera_forward = glm::vec3(0, 0, 1);
+                    camera.yaw            = -90.f;
+                    camera.pitch          = 0.f;
+                    camera.roll           = 0.f;
                 }
+                {
+                    ImGui::DragFloat("Yaw", &camera.yaw);
+                    ImGui::DragFloat("Pitch", &camera.pitch);
+                    ImGui::DragFloat("Roll", &camera.roll);
+                }
+                ImGui::End();
             }
         }
-
         {
 
             int w, h;
@@ -507,7 +484,6 @@ int main(int, char **)
             camera.window_size = {w, h};
             camera.OnUpdate(dt);
         }
-
         {
             Render::begin(camera);
             Render::draw_triangle({0, 0, -1}, glm::vec3(5));
@@ -530,15 +506,13 @@ int main(int, char **)
             }
 
             Render::draw_cube({0, 0, 0}, {5, 1, 5}, {1, 0, 0, 1});
-            Render::end();
+            Render::done();
             glPointSize(15.f);
             glBegin(GL_POINTS);
             glVertex3f(0, 0, 0);
             glVertex3f(1, 0, 0);
             glEnd();
         }
-
-        imgui_context.postupdate();
-        gl_context.update();
+        imgui_context.post_update();
     }
 }

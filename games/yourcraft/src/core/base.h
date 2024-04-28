@@ -22,7 +22,7 @@
         {                                                                                             \
             if (!!!(x)) {                                                                             \
                 fprintf(stderr, "Assertion Failed: %s:%d, %s\n\t", __FILE__, __LINE__, THE_FUNCTION); \
-                fprintf(stderr __VA_OPT__(, ) __VA_ARGS__);                                          \
+                fprintf(stderr __VA_OPT__(, ) __VA_ARGS__);                                           \
                 PLATFORM_BREAK();                                                                     \
             }                                                                                         \
         }

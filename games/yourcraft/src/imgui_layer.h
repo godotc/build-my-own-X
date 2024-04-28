@@ -15,9 +15,7 @@ struct ImguiLayer {
     {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-
         io = &ImGui::GetIO();
-
         config();
     }
 
@@ -34,8 +32,8 @@ struct ImguiLayer {
         // imgui inits
         io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
         io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-        io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
-        io->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
+        // io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
+        // io->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
         // io.ConfigViewportsNoAutoMerge = true;
         // io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -46,18 +44,17 @@ struct ImguiLayer {
 
     void init(GLFWwindow *window)
     {
-
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 330");
     }
 
-    void preupdate()
+    void pre_update()
     {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
     }
-    void postupdate()
+    void post_update()
     {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
